@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Clinisys.API\Clinisys.API.csproj" />
+    <ProjectReference Include="..\..\src\Clinisys.Domain\Clinisys.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Clinisys.Infrastructure\Clinisys.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
