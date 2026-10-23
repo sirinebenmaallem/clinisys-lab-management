@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Clinisys.API/Clinisys.API.csproj" />
+    <Project Path="src/Clinisys.Application/Clinisys.Application.csproj" />
+    <Project Path="src/Clinisys.Domain/Clinisys.Domain.csproj" />
+    <Project Path="src/Clinisys.Infrastructure/Clinisys.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Clinisys.Tests/Clinisys.Tests.csproj" />
+  </Folder>
+</Solution>
