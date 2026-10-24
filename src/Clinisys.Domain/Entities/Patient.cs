@@ -8,17 +8,22 @@ public sealed class Patient : Entity
 
     public Patient(string firstName, string lastName, DateOnly dateOfBirth, Sex sex,
         string? nationalIdentityNumber = null, string? phoneNumber = null)
+        => Update(firstName, lastName, dateOfBirth, sex, nationalIdentityNumber, phoneNumber);
+
+    public void Update(string firstName, string lastName, DateOnly dateOfBirth, Sex sex,
+        string? nationalIdentityNumber = null, string? phoneNumber = null)
     {
-        FirstName = Guard.Required(firstName, 100, nameof(firstName));
-        LastName = Guard.Required(lastName, 100, nameof(lastName));
+        var validFirstName = Guard.Required(firstName, 100, nameof(firstName));
+        var validLastName = Guard.Required(lastName, 100, nameof(lastName));
         if (dateOfBirth == default || dateOfBirth > DateOnly.FromDateTime(DateTime.UtcNow))
             throw new ArgumentOutOfRangeException(nameof(dateOfBirth));
-        DateOfBirth = dateOfBirth;
-        Sex = Guard.EnumValue(sex, nameof(sex));
-        NationalIdentityNumber = Guard.Optional(nationalIdentityNumber, 50, nameof(nationalIdentityNumber))?.ToUpperInvariant();
-        PhoneNumber = Guard.Optional(phoneNumber, 30, nameof(phoneNumber));
-        if (NationalIdentityNumber is null && PhoneNumber is null)
+        var validSex = Guard.EnumValue(sex, nameof(sex));
+        var validIdentity = Guard.Optional(nationalIdentityNumber, 50, nameof(nationalIdentityNumber))?.ToUpperInvariant();
+        var validPhone = Guard.Optional(phoneNumber, 30, nameof(phoneNumber));
+        if (validIdentity is null && validPhone is null)
             throw new ArgumentException("A national identity number or phone number is required.");
+        (FirstName, LastName, DateOfBirth, Sex, NationalIdentityNumber, PhoneNumber) =
+            (validFirstName, validLastName, dateOfBirth, validSex, validIdentity, validPhone);
     }
 
     public string FirstName { get; private set; } = null!;

@@ -1,4 +1,6 @@
 using Clinisys.Infrastructure;
+using Clinisys.Application.Features.Patients;
+using Microsoft.AspNetCore.Mvc;
 using Clinisys.API.Errors;
 using Clinisys.Application.Features.MedicalAnalyses;
 using Clinisys.Application.Features.ReferenceRanges;
@@ -7,12 +9,39 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Hosting request-start/finish logs include query strings. Never record patient searches.
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
+// SQL duplicate-key exception text can contain the conflicting patient identifier,
+// even with sensitive-data logging disabled. Keep only our sanitized error logs.
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Update", LogLevel.None);
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.None);
+
 builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 builder.Services.AddProblemDetails();
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    var defaultFactory = options.InvalidModelStateResponseFactory;
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        if (!context.HttpContext.Request.Path.StartsWithSegments("/api/patients")) return defaultFactory(context);
+        // Binding exception messages can contain submitted values; expose only fixed messages.
+        var problem = new ValidationProblemDetails(new Dictionary<string, string[]>
+        {
+            ["patient"] = ["Patient input or query is missing or invalid."]
+        }) { Status = 400, Title = "One or more validation errors occurred." };
+        problem.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+        var result = new BadRequestObjectResult(problem);
+        result.ContentTypes.Add("application/problem+json");
+        return result;
+    };
+});
+builder.Services.AddExceptionHandler<PatientExceptionHandler>();
 builder.Services.AddExceptionHandler<CatalogExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<PatientCommands>();
+builder.Services.AddScoped<PatientQueries>();
 builder.Services.AddScoped<MedicalAnalysisCommands>();
 builder.Services.AddScoped<MedicalAnalysisQueries>();
 builder.Services.AddScoped<ReferenceRangeCommands>();
@@ -21,6 +50,16 @@ builder.Services.AddScoped<AnalysisPanelCommands>();
 builder.Services.AddScoped<AnalysisPanelQueries>();
 
 var app = builder.Build();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/patients"))
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            return Task.CompletedTask;
+        });
+    await next(context);
+});
 app.UseExceptionHandler(new ExceptionHandlerOptions { SuppressDiagnosticsCallback = _ => true });
 app.UseStatusCodePages();
 

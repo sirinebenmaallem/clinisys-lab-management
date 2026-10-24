@@ -2,8 +2,9 @@
 
 Medical laboratory management application developed as a five-day technical assessment.
 Step 02 adds the domain database model, EF Core SQL Server mapping and InitialCreate migration.
-Step 03 adds the analysis catalogue, reference ranges and panels API. There is no frontend
-or patient/request/result management API yet.
+Step 03 adds the analysis catalogue, reference ranges and panels API. Step 04 adds
+patient create/read/search/update with optimistic concurrency. There is no frontend
+or request/result management API yet.
 
 ## Technology stack
 
@@ -21,7 +22,7 @@ in Application when needed; no MediatR or CQRS framework is installed.
 | Project | Responsibility | Direct project references |
 | --- | --- | --- |
 | `src/Clinisys.Domain` | Entities, enums, reference interval and construction rules | None |
-| `src/Clinisys.Application` | Catalogue commands, queries, DTOs and persistence ports | Domain |
+| `src/Clinisys.Application` | Catalogue and patient commands, queries, DTOs and persistence ports | Domain |
 | `src/Clinisys.Infrastructure` | EF context, entity configurations, migration and SQL Server DI | Application, Domain |
 | `src/Clinisys.API` | Controllers, composition root and dependency injection | Application, Infrastructure |
 | `tests/Clinisys.Tests` | HTTP, domain, EF model and opt-in SQL integration tests | API, Domain, Infrastructure |
@@ -41,6 +42,18 @@ is required; both databases continue to use InitialCreate.
 
 The endpoints are **not authenticated or authorized**. Run only in a trusted local
 development environment until access controls are implemented.
+
+## Patient API (Step 04)
+
+See [patient routes, examples, contracts, concurrency and privacy limits](docs/patients-api.md).
+POST/GET `/api/patients` and GET/PUT `/api/patients/{id}` use the existing schema.
+Lists omit identity/phone; detail responses provide a Base64 version required by PUT.
+Patient responses use no-store. Shared phones are allowed; national identities are unique.
+No DELETE or migration is added. Existing laboratory request snapshots are preserved.
+
+**Use synthetic data only. Authentication and authorization are not implemented;
+do not publicly deploy these endpoints or use real patient data.** Run the solution
+tests below with the isolated SQL connection to include patient and catalogue tests.
 
 ## Local setup
 
@@ -128,11 +141,19 @@ schema/migration consistency, restricted access, uniqueness, foreign keys, delet
 restrictions, snapshots, decimal round trips, initial status and audit fields. Step 03
 adds ten real HTTP/SQL scenarios and a two-connection overlap concurrency test. The
 concurrency test removes only its own synthetic catalogue rows after completion;
-it never creates or deletes medical history. With the variable configured, **65 tests
-pass (0 failed, 0 skipped)**. Without it, 21 SQL-dependent tests are explicitly skipped
-and 44 tests run without SQL Server.
+it never creates or deletes medical history. Step 04 adds 19 patient tests covering
+domain/application rules and five SQL/HTTP scenarios. With the variable configured,
+**84 tests pass (0 failed, 0 skipped)**. Without it, 26 SQL-dependent tests are explicitly
+skipped and 58 tests run without SQL Server.
 The additional guard tests reject unsafe targets without connecting to SQL Server.
 Do not copy the development connection into `CLINISYS_SQL_TEST_CONNECTION`.
+
+Step 04 verification used `dotnet build Clinisys.slnx --no-restore --configuration Release`
+and `dotnet test Clinisys.slnx --no-build --configuration Release` because an already
+running Development API locked Debug output DLLs. Restore and the Release build passed
+with no warnings; the isolated SQL run passed all 84 tests. The sandbox could not
+initialize SqlClient encryption, so the SQL run used the same restricted test setup
+outside the sandbox without weakening encryption or changing database configuration.
 
 After starting the API with the HTTP launch profile, run the read-only Development
 smoke check in another terminal:
