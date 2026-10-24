@@ -29,13 +29,14 @@ internal static class SqlServerTestDatabase
         return builder.ConnectionString;
     }
 
-    internal static ClinisysDbContext CreateContext()
+    internal static ClinisysDbContext CreateContext(params IInterceptor[] interceptors)
     {
         var connectionString = Environment.GetEnvironmentVariable(ConnectionVariable)
             ?? throw new InvalidOperationException($"Set {ConnectionVariable} to the isolated test database.");
         return new ClinisysDbContext(new DbContextOptionsBuilder<ClinisysDbContext>()
             .UseSqlServer(ValidateConnectionString(connectionString))
-            .AddInterceptors(new RestrictedTestConnectionInterceptor()).Options);
+            .AddInterceptors(new RestrictedTestConnectionInterceptor())
+            .AddInterceptors(interceptors).Options);
     }
 
     internal static ClinisysDbContext CreateContext(DbConnection connection)
