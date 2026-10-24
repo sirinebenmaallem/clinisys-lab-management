@@ -1,4 +1,8 @@
 using Clinisys.Infrastructure.Persistence;
+using Clinisys.Infrastructure.Catalog;
+using Clinisys.Application.Features.MedicalAnalyses;
+using Clinisys.Application.Features.ReferenceRanges;
+using Clinisys.Application.Features.AnalysisPanels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,6 +13,9 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<IMedicalAnalysisStore, MedicalAnalysisStore>();
+        services.AddScoped<IReferenceRangeStore, ReferenceRangeStore>();
+        services.AddScoped<IAnalysisPanelStore, AnalysisPanelStore>();
         // Resolve lazily so the health endpoint does not require database access/configuration.
         services.AddDbContext<ClinisysDbContext>(options =>
         {

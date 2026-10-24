@@ -99,11 +99,11 @@ fields are not yet protected against intentional direct SQL editing.
   null maximum is unbounded. This supports children without imposing age bands or
   treating a year as a fixed number of days. Actual sample collection time is not
   supplied by the assessment and is not modeled yet.
-- An exact duplicate range (including an unbounded maximum) is rejected. Different
-  overlapping ranges for the same analysis/sex are **not prevented** by this initial
-  schema. A future catalogue use case must reject overlaps transactionally (with
-  appropriate locking/SQL trigger if direct writes are allowed); no automatic
-  range selection is currently implemented.
+- An exact duplicate range (including an unbounded maximum) is rejected by SQL.
+  Step 03 catalogue commands now reject other overlapping ranges for the same
+  analysis/sex under a shared parent-row locking protocol. The initial schema still
+  does **not** prevent overlaps introduced by privileged direct SQL/other writers.
+  No automatic patient/result range selection is currently implemented.
 - One numeric result per requested analysis, no quantities or repeat runs within a
   request. Repeats, text results, detection limits and unit conversion need explicit
   requirements before extending the schema.

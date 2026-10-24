@@ -7,12 +7,18 @@ public sealed class MedicalAnalysis : Entity
     private MedicalAnalysis() { }
 
     public MedicalAnalysis(string code, string name, string unit, decimal price)
+        => Update(code, name, unit, price);
+
+    public void Update(string code, string name, string unit, decimal price)
     {
-        Code = Guard.Required(code, 30, nameof(code)).ToUpperInvariant();
-        Name = Guard.Required(name, 200, nameof(name));
-        Unit = Guard.Required(unit, 30, nameof(unit));
-        Price = Guard.Price(price, nameof(price));
+        var validCode = Guard.Required(code, 30, nameof(code)).ToUpperInvariant();
+        var validName = Guard.Required(name, 200, nameof(name));
+        var validUnit = Guard.Required(unit, 30, nameof(unit));
+        var validPrice = Guard.Price(price, nameof(price));
+        (Code, Name, Unit, Price) = (validCode, validName, validUnit, validPrice);
     }
+
+    public void Deactivate() => IsActive = false;
 
     public string Code { get; private set; } = null!;
     public string Name { get; private set; } = null!;

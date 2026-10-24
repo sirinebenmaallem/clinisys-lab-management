@@ -38,6 +38,13 @@ internal static class SqlServerTestDatabase
             .AddInterceptors(new RestrictedTestConnectionInterceptor()).Options);
     }
 
+    internal static ClinisysDbContext CreateContext(DbConnection connection)
+    {
+        ValidateConnectionString(connection.ConnectionString);
+        return new ClinisysDbContext(new DbContextOptionsBuilder<ClinisysDbContext>()
+            .UseSqlServer(connection).AddInterceptors(new RestrictedTestConnectionInterceptor()).Options);
+    }
+
     private sealed class RestrictedTestConnectionInterceptor : DbConnectionInterceptor
     {
         // Run before EF can execute any test query, including on a reopened connection.

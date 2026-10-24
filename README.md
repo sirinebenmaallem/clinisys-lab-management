@@ -2,7 +2,8 @@
 
 Medical laboratory management application developed as a five-day technical assessment.
 Step 02 adds the domain database model, EF Core SQL Server mapping and InitialCreate migration.
-The only HTTP endpoint remains the health endpoint; no CRUD or frontend is implemented.
+Step 03 adds the analysis catalogue, reference ranges and panels API. There is no frontend
+or patient/request/result management API yet.
 
 ## Technology stack
 
@@ -20,15 +21,26 @@ in Application when needed; no MediatR or CQRS framework is installed.
 | Project | Responsibility | Direct project references |
 | --- | --- | --- |
 | `src/Clinisys.Domain` | Entities, enums, reference interval and construction rules | None |
-| `src/Clinisys.Application` | Future use cases, DTOs and interfaces | Domain |
+| `src/Clinisys.Application` | Catalogue commands, queries, DTOs and persistence ports | Domain |
 | `src/Clinisys.Infrastructure` | EF context, entity configurations, migration and SQL Server DI | Application, Domain |
 | `src/Clinisys.API` | Controllers, composition root and dependency injection | Application, Infrastructure |
 | `tests/Clinisys.Tests` | HTTP, domain, EF model and opt-in SQL integration tests | API, Domain, Infrastructure |
 
 Dependencies point toward the inner layers. Infrastructure will implement
-interfaces owned by Application. Application remains empty until use cases are
-implemented. Domain has no EF dependency. Authentication, workflow services,
-repositories and business endpoints are not implemented at this stage.
+interfaces owned by Application. Domain and Application have no EF dependency.
+Catalogue commands and queries are separated without MediatR or generic repositories.
+Authentication and laboratory request/result workflow services are not implemented yet.
+
+## Catalogue API (Step 03)
+
+See [routes, JSON contracts, business rules and security limits](docs/catalog-api.md).
+The API supports create/read/search/page/update/deactivate for analyses and panels,
+reference-range management with overlap checks, and panel-analysis associations.
+Catalogue changes preserve historical snapshots. No schema change or new migration
+is required; both databases continue to use InitialCreate.
+
+The endpoints are **not authenticated or authorized**. Run only in a trusted local
+development environment until access controls are implemented.
 
 ## Local setup
 
@@ -111,12 +123,26 @@ Pooling, reconnect retries and ambient transaction enlistment are disabled. Test
 verify the development database is inaccessible and reopening a connection reapplies
 the restriction. No SQL password, server login or secret file is created.
 
-Tests use synthetic records and roll back each data transaction. Ten SQL tests cover
+Tests use synthetic records and roll back each data transaction. The original ten SQL tests cover
 schema/migration consistency, restricted access, uniqueness, foreign keys, deletion
-restrictions, snapshots, decimal round trips, initial status and audit fields. Without
-the variable these ten tests are explicitly skipped; the other 35 tests still run.
+restrictions, snapshots, decimal round trips, initial status and audit fields. Step 03
+adds ten real HTTP/SQL scenarios and a two-connection overlap concurrency test. The
+concurrency test removes only its own synthetic catalogue rows after completion;
+it never creates or deletes medical history. With the variable configured, **65 tests
+pass (0 failed, 0 skipped)**. Without it, 21 SQL-dependent tests are explicitly skipped
+and 44 tests run without SQL Server.
 The additional guard tests reject unsafe targets without connecting to SQL Server.
 Do not copy the development connection into `CLINISYS_SQL_TEST_CONNECTION`.
+
+After starting the API with the HTTP launch profile, run the read-only Development
+smoke check in another terminal:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-CatalogDevelopment.ps1
+```
+
+It verifies health, catalogue search/pagination and OpenAPI without changing the
+development database. Write lifecycles run only in the isolated integration tests.
 
 EF tooling uses explicit configuration, independent of the API launch profile:
 
