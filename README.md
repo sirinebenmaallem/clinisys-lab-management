@@ -4,8 +4,11 @@ Medical laboratory management application developed as a five-day technical asse
 Step 02 adds the domain database model, EF Core SQL Server mapping and InitialCreate migration.
 Step 03 adds the analysis catalogue, reference ranges and panels API. Step 04 adds
 patient create/read/search/update with optimistic concurrency. There is no frontend
-or result management API yet. Step 05 adds registration and consultation of laboratory
+yet. Step 05 adds registration and consultation of laboratory
 requests; its additive counter migration and SQL tests have been validated locally.
+Step 06 adds creation, correction and consultation of numeric analysis results,
+frozen reference bounds and abnormality evaluation. Results cannot yet be officially
+validated. This application is not ready for production.
 
 ## Technology stack
 
@@ -23,15 +26,17 @@ in Application when needed; no MediatR or CQRS framework is installed.
 | Project | Responsibility | Direct project references |
 | --- | --- | --- |
 | `src/Clinisys.Domain` | Entities, enums, reference interval and construction rules | None |
-| `src/Clinisys.Application` | Catalogue, patient and request commands, queries, DTOs and persistence ports | Domain |
-| `src/Clinisys.Infrastructure` | EF context, entity configurations, migration and SQL Server DI | Application, Domain |
-| `src/Clinisys.API` | Controllers, composition root and dependency injection | Application, Infrastructure |
+| `src/Clinisys.Application` | Catalogue, patient, request and result commands/queries, DTOs, persistence/actor ports and pure reference selection | Domain |
+| `src/Clinisys.Infrastructure` | EF mappings, stores, SQL transactions, locks, rowversion concurrency and dependency injection | Application, Domain |
+| `src/Clinisys.API` | HTTP controllers, sanitized errors, composition root and temporary local result-access policy | Application, Infrastructure |
 | `tests/Clinisys.Tests` | HTTP, domain, EF model and opt-in SQL integration tests | API, Domain, Infrastructure |
 
-Dependencies point toward the inner layers. Infrastructure will implement
+Dependencies point toward the inner layers. Infrastructure implements
 interfaces owned by Application. Domain and Application have no EF dependency.
 Catalogue commands and queries are separated without MediatR or generic repositories.
-Authentication and result/workflow transitions are not implemented yet.
+Step 07 will add authentication and the Secretary, Technician and Biologist roles.
+Step 08 will add official validation reserved to the biologist and workflow transitions.
+Neither is implemented yet; entering a result is never official validation.
 
 ## Catalogue API (Step 03)
 
@@ -55,6 +60,23 @@ No DELETE or migration is added. Existing laboratory request snapshots are prese
 **Use synthetic data only. Authentication and authorization are not implemented;
 do not publicly deploy these endpoints or use real patient data.** Run the solution
 tests below with the isolated SQL connection to include patient and catalogue tests.
+
+## Analysis results API (Step 06)
+
+See [result routes, JSON contracts, references, concurrency and local security limits](docs/analysis-results-api.md)
+and [SQL test isolation, execution instructions and local validation results](tests/Clinisys.Tests/AnalysisResults/SQL-TESTS.md).
+The four endpoints create, correct and read numeric results, including lists of
+requested items without a result. Reference bounds are frozen at first entry;
+corrections preserve those bounds and recalculate abnormality. No new migration is required.
+
+**Result endpoints are disabled by default and refuse Production.** Explicit local
+activation is only for synthetic Development/Testing sessions; do not publish them
+or use real patient data. The temporary server actor is `LOCAL-UNAUTHENTICATED`.
+
+Local Step 06-E2 validation on `ClinisysTestDb`: all **24 AnalysisResults SQL tests**
+passed, both targeted LaboratoryRequests deadlock scenarios passed after test
+synchronization was stabilized, and the full Release suite passed **362 tests,
+0 failed, 0 skipped**. These results do not validate or prepare other environments.
 
 ## Local setup
 
@@ -150,7 +172,9 @@ Pooling, reconnect retries and ambient transaction enlistment are disabled. Test
 verify the development database is inaccessible and reopening a connection reapplies
 the restriction. No SQL password, server login or secret file is created.
 
-Tests use synthetic records and roll back each data transaction. The original ten SQL tests cover
+Tests use synthetic records with transaction rollback or targeted cleanup of their
+own committed fixtures. Historical Step 04 results follow; the current Step 06
+Release result is recorded above. The original ten SQL tests cover
 schema/migration consistency, restricted access, uniqueness, foreign keys, deletion
 restrictions, snapshots, decimal round trips, initial status and audit fields. Step 03
 adds ten real HTTP/SQL scenarios and a two-connection overlap concurrency test. The
@@ -196,8 +220,9 @@ EnsureCreated or downgrade commands for this project.
 
 See [database design, assumptions and security strategy](docs/database.md) for
 entity relationships, financial snapshots, audit limitations and the planned
-SQL enforcement of validated-request immutability. **Immutability, automatic audit
-capture and workflow transitions are not enforced in this step.**
+SQL enforcement of validated-request immutability. **Complete request immutability,
+automatic audit capture and workflow transitions remain future work.** Step 06
+does block result corrections when validation metadata is present.
 
 Do not store patient information or secrets in source control. Use .NET user
 secrets or environment variables for credentials. Production must supply its own
