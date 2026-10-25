@@ -57,6 +57,7 @@ builder.Services.AddScoped<ResultErrorScopeFilter>();
 builder.Services.AddScoped<IAnalysisResultActorProvider, AuthenticatedAnalysisResultActorProvider>();
 builder.Services.AddScoped<AnalysisResultCommands>();
 builder.Services.AddScoped<AnalysisResultQueries>();
+builder.Services.AddScoped<RequestWorkflowCommands>();
 builder.Services.AddScoped<LaboratoryRequestCommands>();
 builder.Services.AddScoped<LaboratoryRequestQueries>();
 builder.Services.AddScoped<PatientCommands>();

@@ -7,8 +7,7 @@ patient create/read/search/update with optimistic concurrency. There is no front
 yet. Step 05 adds registration and consultation of laboratory
 requests; its additive counter migration and SQL tests have been validated locally.
 Step 06 adds creation, correction and consultation of numeric analysis results,
-frozen reference bounds and abnormality evaluation. Results cannot yet be officially
-validated. Step 07 adds standard ASP.NET Core Identity, secure cookies, CSRF
+frozen reference bounds and abnormality evaluation. Official validation is implemented separately in Step 08. Step 07 adds standard ASP.NET Core Identity, secure cookies, CSRF
 protection and server-side role authorization. This application is not ready
 for production.
 
@@ -37,8 +36,8 @@ Dependencies point toward the inner layers. Infrastructure implements
 interfaces owned by Application. Domain and Application have no EF dependency.
 Catalogue commands and queries are separated without MediatR or generic repositories.
 Step 07 implements authentication and the Secretary, Technician and Biologist roles.
-Step 08 will add official validation reserved to the biologist and workflow transitions.
-Official validation is not implemented; entering a result is never validation.
+Step 08 implements explicit workflow transitions and official validation reserved to Biologist.
+Official validation uses a separate endpoint; entering a result never validates it.
 
 ## Catalogue API (Step 03)
 
@@ -106,7 +105,7 @@ Initial accounts use the elevated interactive local command:
 `dotnet run --project src/Clinisys.API --configuration Release -- --manage-users`.
 Authorize and securely configure the target first; confirm the database when
 prompted. Password input is hidden, never passed in arguments or stored in Git.
-No business role grants account administration. Biological validation remains Step 08.
+No business role grants account administration. Biological validation is Biologist-only.
 
 HTTPS is required. Production startup requires DataProtection:KeyDirectory;
 persist keys with Windows DPAPI and service-account-only directory ACLs.
@@ -131,6 +130,15 @@ The targeted filter is
 `FullyQualifiedName~Clinisys.Tests.Authentication.AuthenticationSqlTests`.
 Synthetic accounts use rollback-only transactions and existing restricted helpers;
 this does not validate production privileges or committed account provisioning.
+
+## Request workflow (Step 08)
+
+See [transitions, roles, concurrency and audit](docs/request-workflow-api.md).
+Start processing, complete entry, validate and deliver are explicit actions. All
+requested results are required before validation. Validated results are locked.
+No new schema migration is required. Local validation on ClinisysTestDb passed
+all five workflow SQL tests and the full Release regression: **511 passed,
+0 failed, 0 skipped**. These results do not validate other environments.
 
 ## Local setup
 
@@ -275,9 +283,9 @@ EnsureCreated or downgrade commands for this project.
 
 See [database design, assumptions and security strategy](docs/database.md) for
 entity relationships, financial snapshots, audit limitations and the planned
-SQL enforcement of validated-request immutability. **Complete request immutability,
-automatic audit capture and workflow transitions remain future work.** Step 06
-does block result corrections when validation metadata is present.
+SQL enforcement of validated-request immutability. Step 08 enforces workflow and validated-result immutability through the API,
+with transactional transition/result audits. Direct privileged SQL immutability
+and audit tamper resistance still require separate database controls.
 
 Do not store patient information or secrets in source control. Use .NET user
 secrets or environment variables for credentials. Production must supply its own

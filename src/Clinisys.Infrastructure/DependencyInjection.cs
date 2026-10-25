@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IAnalysisResultStore>(provider => new AnalysisResultStore(
             provider.GetRequiredService<ClinisysDbContext>(), provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<IAnalysisResultActorProvider>()));
+        services.AddScoped<IRequestWorkflowStore, RequestWorkflowStore>();
         services.AddScoped<ILaboratoryRequestStore, LaboratoryRequestStore>();
         services.AddScoped<IPatientStore, PatientStore>();
         services.AddScoped<IMedicalAnalysisStore, MedicalAnalysisStore>();
