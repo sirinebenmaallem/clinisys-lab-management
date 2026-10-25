@@ -5,6 +5,9 @@ namespace Clinisys.Infrastructure.Persistence;
 
 public sealed class ClinisysDbContext(DbContextOptions<ClinisysDbContext> options) : DbContext(options)
 {
+    public DbSet<LaboratoryRequestCounter> LaboratoryRequestCounters => Set<LaboratoryRequestCounter>();
+    // Reuses exactly the current options/interceptors; never falls back to application configuration.
+    internal ClinisysDbContext CreateIndependentContext() => new(options);
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<MedicalAnalysis> MedicalAnalyses => Set<MedicalAnalysis>();
     public DbSet<ReferenceRange> ReferenceRanges => Set<ReferenceRange>();

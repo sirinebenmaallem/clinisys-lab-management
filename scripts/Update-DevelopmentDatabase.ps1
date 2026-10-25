@@ -23,10 +23,11 @@ try {
         throw 'Only .\SQLEXPRESS / ClinisysDb with Windows authentication is allowed.'
     }
 
-    $migrationFiles = @(Get-ChildItem 'src/Clinisys.Infrastructure/Persistence/Migrations/*_InitialCreate.cs')
-    if ($migrationFiles.Count -ne 1) { throw 'Expected exactly one InitialCreate migration.' }
-    $migrationId = $migrationFiles[0].BaseName
-    if ($migrationId -notmatch '^\d{14}_InitialCreate$') { throw 'Unexpected migration identifier.' }
+    $approvedMigrations = @('20261023192710_InitialCreate', '20261024175903_AddLaboratoryRequestCounters')
+    $migrationFiles = @(Get-ChildItem 'src/Clinisys.Infrastructure/Persistence/Migrations/*_*.cs' |
+        Where-Object { $_.Name -notlike '*.Designer.cs' } | Sort-Object BaseName)
+    if (Compare-Object $approvedMigrations @($migrationFiles.BaseName)) { throw 'Unrecognized migration files.' }
+    $migrationId = $approvedMigrations[-1]
 
     # Read-only inspection of master. All DDL below is restricted to ClinisysDb.
     $exists = & sqlcmd -S '.\SQLEXPRESS' -E -C -l 5 -b -d master -h -1 -W -Q "SET NOCOUNT ON; SELECT CASE WHEN DB_ID(N'ClinisysDb') IS NULL THEN 0 ELSE 1 END;"
@@ -35,6 +36,11 @@ try {
         $preflight = @"
 SET NOCOUNT ON;
 IF DB_NAME() <> N'ClinisysDb' THROW 51000, 'Unexpected target database.', 1;
+IF EXISTS (SELECT 1 FROM sys.tables WHERE is_ms_shipped = 0 AND
+    (SCHEMA_NAME(schema_id) <> N'dbo' OR name NOT IN
+    (N'__EFMigrationsHistory',N'Patients',N'MedicalAnalyses',N'ReferenceRanges',N'AnalysisPanels',
+     N'PanelAnalyses',N'LaboratoryRequests',N'RequestPanels',N'RequestItems',N'AnalysisResults',N'AuditEntries',N'LaboratoryRequestCounters')))
+    THROW 51004, 'Unrecognized tables. Manual review required.', 1;
 IF OBJECT_ID(N'dbo.__EFMigrationsHistory', N'U') IS NULL
 BEGIN
     IF EXISTS (SELECT 1 FROM sys.tables WHERE is_ms_shipped = 0)
@@ -42,11 +48,15 @@ BEGIN
 END
 ELSE
 BEGIN
-    IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId <> N'$migrationId')
+    IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId NOT IN
+        (N'$($approvedMigrations[0])',N'$migrationId'))
         THROW 51002, 'Unexpected migration history. Refusing migration or downgrade.', 1;
-    IF NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$migrationId')
+    IF NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$($approvedMigrations[0])')
         AND EXISTS (SELECT 1 FROM sys.tables WHERE is_ms_shipped = 0 AND name <> N'__EFMigrationsHistory')
         THROW 51003, 'Existing tables without InitialCreate history. Manual review required.', 1;
+    IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$migrationId')
+        AND NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$($approvedMigrations[0])')
+        THROW 51005, 'Migration history is not an approved prefix.', 1;
 END;
 "@
         & sqlcmd -S '.\SQLEXPRESS' -E -C -l 5 -b -d ClinisysDb -Q $preflight
@@ -59,6 +69,8 @@ END;
     $env:ConnectionStrings__ClinisysDb = $connectionString
     & dotnet ef database update $migrationId --project src/Clinisys.Infrastructure --context ClinisysDbContext
     if ($LASTEXITCODE -ne 0) { throw 'EF migration failed.' }
+    & sqlcmd -S '.\SQLEXPRESS' -E -C -l 5 -b -d ClinisysDb -i (Join-Path $PSScriptRoot 'Initialize-LaboratoryRequestCounters.sql')
+    if ($LASTEXITCODE -ne 0) { throw 'Counter initialization rejected. Do not start request writers.' }
 
     & sqlcmd -S '.\SQLEXPRESS' -E -C -l 5 -b -d ClinisysDb -Q "SET NOCOUNT ON; SELECT MigrationId, ProductVersion FROM dbo.__EFMigrationsHistory; SELECT name AS TableName FROM sys.tables WHERE is_ms_shipped = 0 ORDER BY name;"
     if ($LASTEXITCODE -ne 0) { throw 'Post-migration verification failed.' }

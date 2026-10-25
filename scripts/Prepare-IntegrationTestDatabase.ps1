@@ -9,11 +9,11 @@ try {
     Get-Command sqlcmd -ErrorAction Stop | Out-Null
     # Deliberately independent of development connection settings and ambient overrides.
     $testConnectionString = 'Server=.\SQLEXPRESS;Database=ClinisysTestDb;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;Connect Timeout=5'
-    $migrationFiles = @(Get-ChildItem 'src/Clinisys.Infrastructure/Persistence/Migrations/*_InitialCreate.cs')
-    if ($migrationFiles.Count -ne 1 -or $migrationFiles[0].BaseName -notmatch '^\d{14}_InitialCreate$') {
-        throw 'Expected exactly one InitialCreate migration.'
-    }
-    $migrationId = $migrationFiles[0].BaseName
+    $approvedMigrations = @('20261023192710_InitialCreate', '20261024175903_AddLaboratoryRequestCounters')
+    $migrationFiles = @(Get-ChildItem 'src/Clinisys.Infrastructure/Persistence/Migrations/*_*.cs' |
+        Where-Object { $_.Name -notlike '*.Designer.cs' } | Sort-Object BaseName)
+    if (Compare-Object $approvedMigrations @($migrationFiles.BaseName)) { throw 'Unrecognized migration files.' }
+    $migrationId = $approvedMigrations[-1]
 
     # Read-only master probe; no DDL or data changes to master or ClinisysDb.
     $exists = & sqlcmd -S '.\SQLEXPRESS' -E -C -l 5 -b -d master -h -1 -W -Q "SET NOCOUNT ON; SELECT CASE WHEN DB_ID(N'ClinisysTestDb') IS NULL THEN 0 ELSE 1 END;"
@@ -29,7 +29,7 @@ IF EXISTS (SELECT 1 FROM sys.databases WHERE database_id = DB_ID()
 IF EXISTS (SELECT 1 FROM sys.tables WHERE is_ms_shipped = 0 AND
     (SCHEMA_NAME(schema_id) <> N'dbo' OR name NOT IN
     (N'__EFMigrationsHistory',N'Patients',N'MedicalAnalyses',N'ReferenceRanges',N'AnalysisPanels',
-     N'PanelAnalyses',N'LaboratoryRequests',N'RequestPanels',N'RequestItems',N'AnalysisResults',N'AuditEntries')))
+     N'PanelAnalyses',N'LaboratoryRequests',N'RequestPanels',N'RequestItems',N'AnalysisResults',N'AuditEntries',N'LaboratoryRequestCounters')))
     THROW 51002, 'Unrecognized tables. No data will be overwritten.', 1;
 IF OBJECT_ID(N'dbo.__EFMigrationsHistory', N'U') IS NULL
 BEGIN
@@ -38,11 +38,15 @@ BEGIN
 END
 ELSE
 BEGIN
-    IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId <> N'$migrationId')
+    IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId NOT IN
+        (N'$($approvedMigrations[0])',N'$migrationId'))
         THROW 51004, 'Unexpected migration history. Downgrades are forbidden.', 1;
-    IF NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$migrationId')
+    IF NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$($approvedMigrations[0])')
         AND EXISTS (SELECT 1 FROM sys.tables WHERE is_ms_shipped = 0 AND name <> N'__EFMigrationsHistory')
         THROW 51005, 'Existing schema without InitialCreate. Manual review required.', 1;
+    IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$migrationId')
+        AND NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$($approvedMigrations[0])')
+        THROW 51008, 'Migration history is not an approved prefix.', 1;
 END;
 "@
         & sqlcmd -S '.\SQLEXPRESS' -E -C -l 5 -b -d ClinisysTestDb -Q $preflight
@@ -53,6 +57,8 @@ END;
     $env:ConnectionStrings__ClinisysDb = $testConnectionString
     & dotnet ef database update $migrationId --project src/Clinisys.Infrastructure --context ClinisysDbContext
     if ($LASTEXITCODE -ne 0) { throw 'Test database migration failed.' }
+    & sqlcmd -S '.\SQLEXPRESS' -E -C -l 5 -b -d ClinisysTestDb -i (Join-Path $PSScriptRoot 'Initialize-LaboratoryRequestCounters.sql')
+    if ($LASTEXITCODE -ne 0) { throw 'Counter initialization rejected. Do not start request writers.' }
 
     # This no-login database user needs no password or server login. Tests impersonate
     # it WITH NO REVERT on each nonpooled connection before any test command is run.

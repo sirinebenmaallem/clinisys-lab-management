@@ -568,6 +568,24 @@ namespace Clinisys.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Clinisys.Infrastructure.Persistence.LaboratoryRequestCounter", b =>
+                {
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LastValue")
+                        .HasColumnType("int");
+
+                    b.HasKey("Year");
+
+                    b.ToTable("LaboratoryRequestCounters", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LaboratoryRequestCounters_LastValue", "[LastValue] BETWEEN 1 AND 999999");
+
+                            t.HasCheckConstraint("CK_LaboratoryRequestCounters_Year", "[Year] BETWEEN 1 AND 9999");
+                        });
+                });
+
             modelBuilder.Entity("Clinisys.Domain.Entities.AnalysisResult", b =>
                 {
                     b.HasOne("Clinisys.Domain.Entities.RequestItem", null)

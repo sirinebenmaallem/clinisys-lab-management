@@ -1,4 +1,5 @@
 using Clinisys.Infrastructure;
+using Clinisys.Application.Features.LaboratoryRequests;
 using Clinisys.Application.Features.Patients;
 using Microsoft.AspNetCore.Mvc;
 using Clinisys.API.Errors;
@@ -24,11 +25,12 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     var defaultFactory = options.InvalidModelStateResponseFactory;
     options.InvalidModelStateResponseFactory = context =>
     {
-        if (!context.HttpContext.Request.Path.StartsWithSegments("/api/patients")) return defaultFactory(context);
+        var isRequest = context.HttpContext.Request.Path.StartsWithSegments("/api/laboratory-requests");
+        if (!isRequest && !context.HttpContext.Request.Path.StartsWithSegments("/api/patients")) return defaultFactory(context);
         // Binding exception messages can contain submitted values; expose only fixed messages.
         var problem = new ValidationProblemDetails(new Dictionary<string, string[]>
         {
-            ["patient"] = ["Patient input or query is missing or invalid."]
+            [isRequest ? "request" : "patient"] = [isRequest ? "Request input or query is missing or invalid." : "Patient input or query is missing or invalid."]
         }) { Status = 400, Title = "One or more validation errors occurred." };
         problem.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
         var result = new BadRequestObjectResult(problem);
@@ -37,9 +39,12 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     };
 });
 builder.Services.AddExceptionHandler<PatientExceptionHandler>();
+builder.Services.AddExceptionHandler<LaboratoryRequestExceptionHandler>();
 builder.Services.AddExceptionHandler<CatalogExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<LaboratoryRequestCommands>();
+builder.Services.AddScoped<LaboratoryRequestQueries>();
 builder.Services.AddScoped<PatientCommands>();
 builder.Services.AddScoped<PatientQueries>();
 builder.Services.AddScoped<MedicalAnalysisCommands>();
@@ -52,7 +57,7 @@ builder.Services.AddScoped<AnalysisPanelQueries>();
 var app = builder.Build();
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path.StartsWithSegments("/api/patients"))
+    if (context.Request.Path.StartsWithSegments("/api/patients") || context.Request.Path.StartsWithSegments("/api/laboratory-requests"))
         context.Response.OnStarting(() =>
         {
             context.Response.Headers.CacheControl = "no-store";

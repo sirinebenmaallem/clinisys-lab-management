@@ -9,14 +9,15 @@ namespace Clinisys.Tests.Persistence;
 public sealed class SqlServerSchemaTests
 {
     [SqlServerFact]
-    public async Task ActualSchema_MatchesInitialMigrationColumnsKeysRelationshipsAndChecks()
+    public async Task ActualSchema_MatchesApprovedMigrationChainColumnsKeysRelationshipsAndChecks()
     {
         await using var db = SqlServerTestDatabase.CreateContext();
         var assembly = db.GetService<IMigrationsAssembly>();
-        var migrationEntry = Assert.Single(assembly.Migrations);
-        var migration = assembly.CreateMigration(migrationEntry.Value, db.Database.ProviderName!);
-        var tables = migration.UpOperations.OfType<CreateTableOperation>().ToArray();
-        Assert.Equal(new[] { migrationEntry.Key }, await db.Database.GetAppliedMigrationsAsync());
+        Assert.Equal(2, assembly.Migrations.Count);
+        var operations = assembly.Migrations.OrderBy(x => x.Key)
+            .SelectMany(x => assembly.CreateMigration(x.Value, db.Database.ProviderName!).UpOperations).ToArray();
+        var tables = operations.OfType<CreateTableOperation>().ToArray();
+        Assert.Equal(assembly.Migrations.Keys.Order(), (await db.Database.GetAppliedMigrationsAsync()).Order());
         Assert.Empty(await db.Database.GetPendingMigrationsAsync());
 
         var expectedColumns = tables.SelectMany(t => t.Columns.Select(c =>
@@ -38,7 +39,7 @@ public sealed class SqlServerSchemaTests
 
         var expectedKeys = tables.Select(t => $"{t.Name}|{t.PrimaryKey!.Name}|{string.Join(',', t.PrimaryKey.Columns)}|")
             .Concat(tables.SelectMany(t => t.UniqueConstraints.Select(k => $"{t.Name}|{k.Name}|{string.Join(',', k.Columns)}|")))
-            .Concat(migration.UpOperations.OfType<CreateIndexOperation>().Where(i => i.IsUnique)
+            .Concat(operations.OfType<CreateIndexOperation>().Where(i => i.IsUnique)
                 .Select(i => $"{i.Table}|{i.Name}|{string.Join(',', i.Columns)}|{Normalize(i.Filter ?? "")}"));
         var actualKeys = await ReadRows(db, """
             SELECT t.name, i.name, STRING_AGG(CONVERT(nvarchar(max),c.name),',') WITHIN GROUP (ORDER BY ic.key_ordinal),
