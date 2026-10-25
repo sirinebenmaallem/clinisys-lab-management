@@ -10,10 +10,11 @@ namespace Clinisys.API.Errors;
 
 public sealed class AnalysisResultExceptionHandler(ILogger<AnalysisResultExceptionHandler> logger) : IExceptionHandler
 {
+    public static readonly object RequestMarker = new();
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
         var known = exception as AnalysisResultException;
-        if (known is null && !context.Items.ContainsKey(AnalysisResultLocalAccessFilter.RequestMarker)) return false;
+        if (known is null && !context.Items.ContainsKey(RequestMarker)) return false;
         if (exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested) return false;
         var technical = exception;
         while ((technical is InvalidOperationException or DbUpdateException) && technical.InnerException is { } inner)

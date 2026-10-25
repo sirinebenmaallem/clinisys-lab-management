@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using Clinisys.Application.Features.Authentication;
 using Clinisys.Application.Common;
 using Clinisys.Application.Features.AnalysisPanels;
 using Microsoft.AspNetCore.Mvc;
@@ -8,12 +10,15 @@ namespace Clinisys.API.Controllers;
 [Route("api/analysis-panels")]
 public sealed class AnalysisPanelsController(AnalysisPanelCommands commands, AnalysisPanelQueries queries) : ControllerBase
 {
+    [Authorize(Policy = AuthenticationPermissions.CatalogRead)]
     [HttpGet]
     public Task<CatalogPage<PanelDto>> List([FromQuery] CatalogPageQuery query, CancellationToken ct) => queries.SearchAsync(query, ct);
 
+    [Authorize(Policy = AuthenticationPermissions.CatalogRead)]
     [HttpGet("{id:guid}")]
     public Task<PanelDetailsDto> Get(Guid id, CancellationToken ct) => queries.GetAsync(id, ct);
 
+    [Authorize(Policy = AuthenticationPermissions.CatalogWrite)]
     [HttpPost]
     [ProducesResponseType<PanelDto>(StatusCodes.Status201Created)]
     public async Task<ActionResult<PanelDto>> Create(PanelInput input, CancellationToken ct)
@@ -22,9 +27,11 @@ public sealed class AnalysisPanelsController(AnalysisPanelCommands commands, Ana
         return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
     }
 
+    [Authorize(Policy = AuthenticationPermissions.CatalogWrite)]
     [HttpPut("{id:guid}")]
     public Task<PanelDto> Update(Guid id, PanelInput input, CancellationToken ct) => commands.UpdateAsync(id, input, ct);
 
+    [Authorize(Policy = AuthenticationPermissions.CatalogWrite)]
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)
@@ -33,6 +40,7 @@ public sealed class AnalysisPanelsController(AnalysisPanelCommands commands, Ana
         return NoContent();
     }
 
+    [Authorize(Policy = AuthenticationPermissions.CatalogWrite)]
     [HttpPut("{id:guid}/analyses/{analysisId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> AddAnalysis(Guid id, Guid analysisId, CancellationToken ct)
@@ -41,6 +49,7 @@ public sealed class AnalysisPanelsController(AnalysisPanelCommands commands, Ana
         return NoContent();
     }
 
+    [Authorize(Policy = AuthenticationPermissions.CatalogWrite)]
     [HttpDelete("{id:guid}/analyses/{analysisId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RemoveAnalysis(Guid id, Guid analysisId, CancellationToken ct)

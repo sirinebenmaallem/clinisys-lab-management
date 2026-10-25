@@ -1,9 +1,12 @@
 using Clinisys.Domain.Entities;
+using Clinisys.Infrastructure.Authentication;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Clinisys.Infrastructure.Persistence;
 
-public sealed class ClinisysDbContext(DbContextOptions<ClinisysDbContext> options) : DbContext(options)
+public sealed class ClinisysDbContext(DbContextOptions<ClinisysDbContext> options)
+    : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>(options)
 {
     public DbSet<LaboratoryRequestCounter> LaboratoryRequestCounters => Set<LaboratoryRequestCounter>();
     // Reuses exactly the current options/interceptors; never falls back to application configuration.
@@ -19,6 +22,10 @@ public sealed class ClinisysDbContext(DbContextOptions<ClinisysDbContext> option
     public DbSet<AnalysisResult> AnalysisResults => Set<AnalysisResult>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        IdentityModelConfiguration.Configure(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ClinisysDbContext).Assembly);
+    }
 }

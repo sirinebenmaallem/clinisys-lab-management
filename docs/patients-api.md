@@ -3,9 +3,9 @@
 This feature uses the existing Patient model and InitialCreate schema. No migration,
 patient deletion endpoint, request workflow, or patient audit mechanism is added.
 
-**Authentication and authorization are not implemented. Use synthetic data only in
-a trusted local assessment environment. Do not use real patient data or deploy these
-APIs publicly.** Full detail responses contain sensitive identifiers. Names, dates of
+**Step 07 requires authentication: search allows all three business roles; detail
+and writes require Secretary. Writes require CSRF protection. Use synthetic data
+only; public or clinical deployment is not approved.** Full detail responses contain sensitive identifiers. Names, dates of
 birth and sex in list responses are also personal information.
 
 ## Routes and responses
