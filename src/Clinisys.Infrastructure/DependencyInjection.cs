@@ -1,4 +1,6 @@
 using Clinisys.Infrastructure.Persistence;
+using Clinisys.Application.Features.AnalysisResults;
+using Clinisys.Infrastructure.AnalysisResults;
 using Clinisys.Application.Features.LaboratoryRequests;
 using Clinisys.Infrastructure.LaboratoryRequests;
 using Clinisys.Application.Features.Patients;
@@ -18,6 +20,11 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(TimeProvider.System);
+        // No default actor is installed. Resolve lazily so existing modules can start;
+        // result-store resolution fails closed until an authorized server provider exists.
+        services.AddScoped<IAnalysisResultStore>(provider => new AnalysisResultStore(
+            provider.GetRequiredService<ClinisysDbContext>(), provider.GetRequiredService<TimeProvider>(),
+            provider.GetRequiredService<IAnalysisResultActorProvider>()));
         services.AddScoped<ILaboratoryRequestStore, LaboratoryRequestStore>();
         services.AddScoped<IPatientStore, PatientStore>();
         services.AddScoped<IMedicalAnalysisStore, MedicalAnalysisStore>();

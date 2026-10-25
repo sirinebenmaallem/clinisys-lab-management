@@ -42,6 +42,13 @@ public sealed class LaboratoryRequest : Entity
         RegisteredAt = registeredAt;
     }
 
+    public void EnsureResultsEditable()
+    {
+        if (Status is not (RequestStatus.Registered or RequestStatus.InProgress or RequestStatus.ResultsEntered)
+            || ValidatedAt is not null || ValidatedBy is not null || DeliveredAt is not null)
+            throw new InvalidOperationException("The request does not allow result entry or correction.");
+    }
+
     public string Number { get; private set; } = null!;
     public Guid PatientId { get; private set; }
     public DateOnly PatientDateOfBirthSnapshot { get; private set; }

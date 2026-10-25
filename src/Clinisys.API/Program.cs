@@ -1,4 +1,6 @@
 using Clinisys.Infrastructure;
+using Clinisys.API.AnalysisResults;
+using Clinisys.Application.Features.AnalysisResults;
 using Clinisys.Application.Features.LaboratoryRequests;
 using Clinisys.Application.Features.Patients;
 using Microsoft.AspNetCore.Mvc;
@@ -39,10 +41,17 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     };
 });
 builder.Services.AddExceptionHandler<PatientExceptionHandler>();
+builder.Services.AddExceptionHandler<AnalysisResultExceptionHandler>();
 builder.Services.AddExceptionHandler<LaboratoryRequestExceptionHandler>();
 builder.Services.AddExceptionHandler<CatalogExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AnalysisResultLocalAccess>();
+builder.Services.AddScoped<AnalysisResultLocalAccessFilter>();
+builder.Services.AddScoped<IAnalysisResultActorProvider, LocalAnalysisResultActorProvider>();
+builder.Services.AddScoped<AnalysisResultCommands>();
+builder.Services.AddScoped<AnalysisResultQueries>();
 builder.Services.AddScoped<LaboratoryRequestCommands>();
 builder.Services.AddScoped<LaboratoryRequestQueries>();
 builder.Services.AddScoped<PatientCommands>();
