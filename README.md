@@ -4,7 +4,8 @@ Medical laboratory management application developed as a five-day technical asse
 Step 02 adds the domain database model, EF Core SQL Server mapping and InitialCreate migration.
 Step 03 adds the analysis catalogue, reference ranges and panels API. Step 04 adds
 patient create/read/search/update with optimistic concurrency. There is no frontend
-or request/result management API yet.
+or result management API yet. Step 05 adds registration and consultation of laboratory
+requests; its additive counter migration and SQL tests have been validated locally.
 
 ## Technology stack
 
@@ -22,7 +23,7 @@ in Application when needed; no MediatR or CQRS framework is installed.
 | Project | Responsibility | Direct project references |
 | --- | --- | --- |
 | `src/Clinisys.Domain` | Entities, enums, reference interval and construction rules | None |
-| `src/Clinisys.Application` | Catalogue and patient commands, queries, DTOs and persistence ports | Domain |
+| `src/Clinisys.Application` | Catalogue, patient and request commands, queries, DTOs and persistence ports | Domain |
 | `src/Clinisys.Infrastructure` | EF context, entity configurations, migration and SQL Server DI | Application, Domain |
 | `src/Clinisys.API` | Controllers, composition root and dependency injection | Application, Infrastructure |
 | `tests/Clinisys.Tests` | HTTP, domain, EF model and opt-in SQL integration tests | API, Domain, Infrastructure |
@@ -30,7 +31,7 @@ in Application when needed; no MediatR or CQRS framework is installed.
 Dependencies point toward the inner layers. Infrastructure will implement
 interfaces owned by Application. Domain and Application have no EF dependency.
 Catalogue commands and queries are separated without MediatR or generic repositories.
-Authentication and laboratory request/result workflow services are not implemented yet.
+Authentication and result/workflow transitions are not implemented yet.
 
 ## Catalogue API (Step 03)
 
@@ -38,7 +39,7 @@ See [routes, JSON contracts, business rules and security limits](docs/catalog-ap
 The API supports create/read/search/page/update/deactivate for analyses and panels,
 reference-range management with overlap checks, and panel-analysis associations.
 Catalogue changes preserve historical snapshots. No schema change or new migration
-is required; both databases continue to use InitialCreate.
+is required for Step 03; Step 05 adds the separate counter migration.
 
 The endpoints are **not authenticated or authorized**. Run only in a trusted local
 development environment until access controls are implemented.
@@ -56,6 +57,18 @@ do not publicly deploy these endpoints or use real patient data.** Run the solut
 tests below with the isolated SQL connection to include patient and catalogue tests.
 
 ## Local setup
+
+See [Step 05 request contracts, numbering, transactions and deployment prerequisites](docs/laboratory-requests-api.md).
+The new API requires the separately reviewed counter migration and controlled historical
+initialization. Do not run the database preparation/update commands below without that
+authorization. InitialCreate is unchanged; scripts now recognize the two approved migrations.
+Previously recorded Step 04 SQL test results below describe that earlier schema.
+For Step 05, migration `20261024175903_AddLaboratoryRequestCounters` was applied locally
+to `ClinisysTestDb` and `ClinisysDb`, after backing up `ClinisysDb`. The Release run
+passed all 150 automated tests with the SQL connection explicitly restricted to
+`ClinisysTestDb`. Manual development-database checks also passed; see the request API
+document for details. These local results do not prepare any other environment:
+new installations still require the reviewed migration and historical initialization.
 
 Install the .NET SDK **10.0.402**, selected by the existing `global.json`.
 Run the following commands from the repository root:
@@ -106,7 +119,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Update-DevelopmentDa
 
 The script requires `sqlcmd` (ODBC client). Its execution policy override applies
 only to that PowerShell process. It checks the exact local server/database,
-connectivity and existing schema/history before applying **only InitialCreate**.
+connectivity and existing schema/history before applying **only the approved ordered
+migrations**, followed by controlled request-counter initialization.
 It stops on unrecognized existing tables or migration history, never drops tables,
 and prints the migration history and table names for verification. Its only query
 against `master` is a read-only existence check. The migration's destructive
@@ -124,7 +138,7 @@ Remove-Item Env:CLINISYS_SQL_TEST_CONNECTION
 These tests only accept `.\SQLEXPRESS` / **`ClinisysTestDb`**, with Windows authentication.
 `ClinisysDb`, system databases and unrelated targets are rejected before opening a
 connection. The preparation script checks existing schema/history and applies only
-InitialCreate without deleting or overwriting application data. It never migrates
+the approved migration chain without deleting or overwriting application data. It never migrates
 the development database. A repeated preparation is safe for an already migrated
 test database. It requires migration rights and permission to create/impersonate
 the no-login database user `ClinisysIntegrationTests`.

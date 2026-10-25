@@ -14,18 +14,19 @@ public sealed class ModelConfigurationTests
         .UseSqlServer("Server=.\\SQLEXPRESS;Database=ClinisysTestDb;Integrated Security=True;TrustServerCertificate=True").Options);
 
     [Fact]
-    public void Model_HasTenTablesAndNoCascadeDelete()
+    public void Model_HasTenBusinessTablesAndTechnicalCounterWithoutCascadeDelete()
     {
         using var db = CreateContext();
-        Assert.Equal(10, db.Model.GetEntityTypes().Count());
+        Assert.Equal(11, db.Model.GetEntityTypes().Count());
         Assert.All(db.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()),
             fk => Assert.Equal(DeleteBehavior.NoAction, fk.DeleteBehavior));
-        Assert.All(db.Model.GetEntityTypes(), entity =>
+        Assert.All(db.Model.GetEntityTypes().Where(x => typeof(Clinisys.Domain.Common.Entity).IsAssignableFrom(x.ClrType)), entity =>
         {
             var version = entity.FindProperty("Version")!;
             Assert.True(version.IsConcurrencyToken);
             Assert.Equal(ValueGenerated.OnAddOrUpdate, version.ValueGenerated);
         });
+        Assert.Null(db.Model.FindEntityType(typeof(LaboratoryRequestCounter))!.FindProperty("Version"));
     }
 
     [Fact]
@@ -74,7 +75,7 @@ public sealed class ModelConfigurationTests
     {
         using var db = CreateContext();
         var assembly = db.GetService<IMigrationsAssembly>();
-        var entry = Assert.Single(assembly.Migrations);
+        var entry = Assert.Single(assembly.Migrations, x => x.Key.EndsWith("_InitialCreate"));
         Assert.EndsWith("_InitialCreate", entry.Key);
         var migration = assembly.CreateMigration(entry.Value, db.Database.ProviderName!);
         Assert.Equal(10, migration.UpOperations.OfType<CreateTableOperation>().Count());
@@ -86,6 +87,23 @@ public sealed class ModelConfigurationTests
         var model = db.GetService<IDesignTimeModel>().Model;
         Assert.Contains(model.FindEntityType(typeof(ReferenceRange))!.GetCheckConstraints(), c => c.Name == "CK_ReferenceRanges_Bounds");
         Assert.Contains(model.FindEntityType(typeof(AnalysisResult))!.GetCheckConstraints(), c => c.Name == "CK_AnalysisResults_ReferenceAndAbnormality");
+    }
+
+    [Fact]
+    public void CounterMigration_IsAdditiveAndMatchesTheCurrentModel()
+    {
+        using var db = CreateContext();
+        var assembly = db.GetService<IMigrationsAssembly>();
+        Assert.Equal(2, assembly.Migrations.Count);
+        var entry = Assert.Single(assembly.Migrations, x => x.Key.EndsWith("_AddLaboratoryRequestCounters"));
+        var migration = assembly.CreateMigration(entry.Value, db.Database.ProviderName!);
+        var table = Assert.IsType<CreateTableOperation>(Assert.Single(migration.UpOperations));
+        Assert.Equal("LaboratoryRequestCounters", table.Name);
+        Assert.Equal(new[] { "Year", "LastValue" }, table.Columns.Select(x => x.Name));
+        Assert.Equal(new[] { "Year" }, table.PrimaryKey!.Columns);
+        Assert.Equal(2, table.CheckConstraints.Count);
+        Assert.Throws<NotSupportedException>(() => migration.DownOperations);
+        Assert.False(db.Database.HasPendingModelChanges());
     }
 
     private static void AssertUnique<T>(ClinisysDbContext db, params string[] properties) =>

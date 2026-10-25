@@ -1,4 +1,6 @@
 using Clinisys.Infrastructure.Persistence;
+using Clinisys.Application.Features.LaboratoryRequests;
+using Clinisys.Infrastructure.LaboratoryRequests;
 using Clinisys.Application.Features.Patients;
 using Clinisys.Infrastructure.Patients;
 using Clinisys.Infrastructure.Catalog;
@@ -15,6 +17,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<ILaboratoryRequestStore, LaboratoryRequestStore>();
         services.AddScoped<IPatientStore, PatientStore>();
         services.AddScoped<IMedicalAnalysisStore, MedicalAnalysisStore>();
         services.AddScoped<IReferenceRangeStore, ReferenceRangeStore>();
