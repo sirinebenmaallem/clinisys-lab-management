@@ -10,13 +10,16 @@ public static class AuthenticationPermissions
     public const string PatientsWrite = "Patients.Write";
     public const string RequestsRead = "Requests.Read";
     public const string RequestsCreate = "Requests.Create";
+    public const string RequestsProcess = "Requests.Process";
+    public const string RequestsValidate = "Requests.Validate";
+    public const string RequestsDeliver = "Requests.Deliver";
     public const string ResultsRead = "Results.Read";
     public const string ResultsWrite = "Results.Write";
 
     public static IReadOnlyList<string> All { get; } = Array.AsReadOnly(new[]
     {
         CatalogRead, CatalogWrite, PatientsSearch, PatientsReadDetail, PatientsWrite,
-        RequestsRead, RequestsCreate, ResultsRead, ResultsWrite
+        RequestsRead, RequestsCreate, RequestsProcess, RequestsValidate, RequestsDeliver, ResultsRead, ResultsWrite
     });
 
     public static IReadOnlyList<string> ForRoles(IEnumerable<string>? roles)
@@ -28,13 +31,13 @@ public static class AuthenticationPermissions
             {
                 case AuthenticationRoles.Secretary:
                     permissions.UnionWith([CatalogRead, PatientsSearch, PatientsReadDetail,
-                        PatientsWrite, RequestsRead, RequestsCreate]);
+                        PatientsWrite, RequestsRead, RequestsCreate, RequestsDeliver]);
                     break;
                 case AuthenticationRoles.Technician:
-                    permissions.UnionWith([CatalogRead, PatientsSearch, RequestsRead, ResultsRead, ResultsWrite]);
+                    permissions.UnionWith([CatalogRead, PatientsSearch, RequestsRead, RequestsProcess, ResultsRead, ResultsWrite]);
                     break;
                 case AuthenticationRoles.Biologist:
-                    permissions.UnionWith([CatalogRead, CatalogWrite, PatientsSearch, RequestsRead, ResultsRead, ResultsWrite]);
+                    permissions.UnionWith([CatalogRead, CatalogWrite, PatientsSearch, RequestsRead, RequestsProcess, RequestsValidate, RequestsDeliver, ResultsRead, ResultsWrite]);
                     break;
             }
         }

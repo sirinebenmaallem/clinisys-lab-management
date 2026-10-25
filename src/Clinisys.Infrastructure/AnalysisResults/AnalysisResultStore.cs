@@ -136,14 +136,27 @@ public sealed partial class AnalysisResultStore : IAnalysisResultStore
             try { result = new AnalysisResult(item.Id, value, actor, interval, clock.GetUtcNow().ToUniversalTime()); }
             catch (ArgumentException) { throw AnalysisResultException.Validation("value"); }
             context.AnalysisResults.Add(result);
+            context.AuditEntries.Add(new AuditEntry(requestId, itemId, Clinisys.Domain.AuditAction.Created,
+                actor, nameof(AnalysisResult.Value), null,
+                result.Value.ToString(System.Globalization.CultureInfo.InvariantCulture), result.EnteredAt));
         }
         else
         {
             if (result is null) throw AnalysisResultException.NotFound();
-            PrepareCorrection(context, result, value, version, actor, clock.GetUtcNow().ToUniversalTime());
+            PrepareAuditedCorrection(context, requestId, result, value, version, actor, clock.GetUtcNow().ToUniversalTime());
         }
         await context.SaveChangesAsync(ct);
         return Detail(item, result);
+    }
+
+    private static void PrepareAuditedCorrection(ClinisysDbContext context, Guid requestId, AnalysisResult result,
+        decimal value, byte[] version, string actor, DateTimeOffset instant)
+    {
+        var previous = result.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        PrepareCorrection(context, result, value, version, actor, instant);
+        context.AuditEntries.Add(new AuditEntry(requestId, result.RequestItemId, Clinisys.Domain.AuditAction.Updated,
+            actor, nameof(AnalysisResult.Value), previous,
+            result.Value.ToString(System.Globalization.CultureInfo.InvariantCulture), instant));
     }
 
     private static void PrepareCorrection(ClinisysDbContext context, AnalysisResult result, decimal value,

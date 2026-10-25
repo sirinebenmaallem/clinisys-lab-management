@@ -40,6 +40,17 @@ public sealed class AnalysisResult : Entity
         EnteredAt = enteredAt;
     }
 
+    public void Validate(string actor, DateTimeOffset instant)
+    {
+        if (ValidatedAt is not null || ValidatedBy is not null)
+            throw new InvalidOperationException("The result is already validated.");
+        var validActor = Guard.Required(actor, 100, nameof(actor));
+        RequireUtc(instant);
+        if (instant < EnteredAt) throw new ArgumentException("Validation cannot precede entry.", nameof(instant));
+        ValidatedBy = validActor;
+        ValidatedAt = instant;
+    }
+
     private static void RequireUtc(DateTimeOffset enteredAt)
     {
         if (enteredAt.Offset != TimeSpan.Zero)

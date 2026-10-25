@@ -82,6 +82,7 @@ internal sealed class AnalysisResultSqlFixture : IAsyncDisposable
         var items = new[] { Item.Id, EmptyItem.Id, ForeignItem.Id };
         var requests = new[] { Request.Id, OtherRequest.Id };
         var analyses = new[] { Analysis.Id, OtherAnalysis.Id };
+        await db.AuditEntries.Where(x => requests.Contains(x.LaboratoryRequestId)).ExecuteDeleteAsync(ct);
         await db.AnalysisResults.Where(x => items.Contains(x.RequestItemId)).ExecuteDeleteAsync(ct);
         await db.RequestItems.Where(x => items.Contains(x.Id)).ExecuteDeleteAsync(ct);
         await db.LaboratoryRequests.Where(x => requests.Contains(x.Id)).ExecuteDeleteAsync(ct);

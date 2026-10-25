@@ -7,7 +7,13 @@ public sealed class AuditEntry : Entity
     private AuditEntry() { }
     public AuditEntry(Guid laboratoryRequestId, Guid? requestItemId, AuditAction action,
         string actor, string fieldName, string? oldValue, string? newValue)
+        : this(laboratoryRequestId, requestItemId, action, actor, fieldName, oldValue, newValue, DateTimeOffset.UtcNow) { }
+
+    public AuditEntry(Guid laboratoryRequestId, Guid? requestItemId, AuditAction action,
+        string actor, string fieldName, string? oldValue, string? newValue, DateTimeOffset occurredAt)
     {
+        if (occurredAt.Offset != TimeSpan.Zero) throw new ArgumentException("Audit time must be UTC.", nameof(occurredAt));
+        OccurredAt = occurredAt;
         LaboratoryRequestId = Guard.Id(laboratoryRequestId, nameof(laboratoryRequestId));
         RequestItemId = requestItemId is null ? null : Guard.Id(requestItemId.Value, nameof(requestItemId));
         Action = Guard.EnumValue(action, nameof(action));

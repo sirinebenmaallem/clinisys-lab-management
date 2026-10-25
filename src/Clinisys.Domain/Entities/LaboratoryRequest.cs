@@ -49,6 +49,47 @@ public sealed class LaboratoryRequest : Entity
             throw new InvalidOperationException("The request does not allow result entry or correction.");
     }
 
+    public void StartProcessing()
+    {
+        EnsureTransition(RequestStatus.Registered);
+        Status = RequestStatus.InProgress;
+    }
+
+    public void MarkResultsEntered(bool allResultsPresent)
+    {
+        EnsureTransition(RequestStatus.InProgress);
+        if (!allResultsPresent) throw new InvalidOperationException("All requested results are required.");
+        Status = RequestStatus.ResultsEntered;
+    }
+
+    public void ValidateResults(bool allResultsPresent, string actor, DateTimeOffset instant)
+    {
+        EnsureTransition(RequestStatus.ResultsEntered);
+        if (!allResultsPresent) throw new InvalidOperationException("All requested results are required.");
+        var validActor = Guard.Required(actor, 100, nameof(actor));
+        if (instant.Offset != TimeSpan.Zero || instant < RegisteredAt)
+            throw new ArgumentException("Invalid validation instant.", nameof(instant));
+        ValidatedBy = validActor;
+        ValidatedAt = instant;
+        Status = RequestStatus.Validated;
+    }
+
+    public void Deliver(DateTimeOffset instant)
+    {
+        if (Status != RequestStatus.Validated || ValidatedAt is null || ValidatedBy is null || DeliveredAt is not null)
+            throw new InvalidOperationException("Only a validated request can be delivered.");
+        if (instant.Offset != TimeSpan.Zero || instant < ValidatedAt)
+            throw new ArgumentException("Invalid delivery instant.", nameof(instant));
+        DeliveredAt = instant;
+        Status = RequestStatus.Delivered;
+    }
+
+    private void EnsureTransition(RequestStatus expected)
+    {
+        EnsureResultsEditable();
+        if (Status != expected) throw new InvalidOperationException("The workflow transition is not allowed.");
+    }
+
     public string Number { get; private set; } = null!;
     public Guid PatientId { get; private set; }
     public DateOnly PatientDateOfBirthSnapshot { get; private set; }
