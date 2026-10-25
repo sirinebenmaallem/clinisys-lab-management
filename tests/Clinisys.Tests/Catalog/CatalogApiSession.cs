@@ -1,3 +1,4 @@
+using Clinisys.Tests.Authentication;
 using Clinisys.Infrastructure.Persistence;
 using Clinisys.Tests.Persistence;
 using Microsoft.AspNetCore.Hosting;
@@ -27,6 +28,7 @@ internal sealed class CatalogApiSession : IAsyncDisposable
             host.UseEnvironment("Development");
             host.ConfigureServices(services =>
             {
+                services.AddTestAuthentication("Secretary", "Biologist", "Technician");
                 services.RemoveAll<ClinisysDbContext>();
                 services.RemoveAll<DbContextOptions<ClinisysDbContext>>();
                 services.AddScoped(_ =>
@@ -37,10 +39,7 @@ internal sealed class CatalogApiSession : IAsyncDisposable
                 });
             });
         });
-        Client = _factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false
-        });
+        Client = _factory.AuthenticatedClient();
     }
 
     internal static async Task<CatalogApiSession> OpenAsync()

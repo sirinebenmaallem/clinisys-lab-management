@@ -150,8 +150,8 @@ the development configuration without inserting any development records. Full wr
 lifecycles are verified against the isolated test DB. OpenAPI JSON remains available
 at `/openapi/v1.json` in Development; there is no Swagger UI.
 
-**Security limits:** authentication and authorization are not implemented. Catalogue
-write endpoints are accessible to anyone who can reach the API. Use only a trusted
+**Step 07 security:** reads require any business role; writes require Biologist
+and CSRF protection. Anonymous calls return 401; denied roles return 403. Use only a trusted
 local development environment. Database-level immutability after validation/delivery,
 automatic audit capture and append-only audit protection remain unimplemented from
 Step 02. Range overlap protection covers these API writers, not privileged direct SQL

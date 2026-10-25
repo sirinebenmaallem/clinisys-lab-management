@@ -4,32 +4,15 @@ Numeric result entry, correction and consultation only. Entry does not validate 
 result and does not change the request status. No biological validation or delivery
 endpoint exists. No database migration is required for this module.
 
-## Local security prerequisite
+## Authentication prerequisite (Step 07)
 
-**All four endpoints are disabled by default. Do not publish them or use real patient data.**
-For an explicitly authorized synthetic local session, set
-`AnalysisResults:EnableLocalAccess=true`, or environment variable
-`AnalysisResults__EnableLocalAccess=true`, and unset it afterwards.
-
-Every request must satisfy all of these conditions:
-
-- Environment is exactly Development or Testing; Production and all other environments are refused.
-- The activation flag parses as true.
-- Both connection addresses (local and remote) are loopback; unknown addresses are refused.
-- No `Forwarded`, `X-Forwarded-*` or `X-Real-IP` header is present.
-
-Failure returns 404 before model binding. Bind the listener to loopback only;
-do not expose it through a public listener, reverse proxy or tunnel. A local proxy
-can originate loopback traffic without declaring itself: these checks are not
-authentication and cannot prove the absence of such a proxy.
-
-The server supplies `LOCAL-UNAUTHENTICATED` on each write after checking local
-access again. Client headers are not credentials and cannot choose the actor.
-Step 07 will add authentication and Secretary/Technician/Biologist roles; Step 08
-will add workflow transitions and official validation reserved to the biologist.
-The temporary policy and actor must be replaced by authenticated access.
-
-See also the [local-access implementation notes](../src/Clinisys.API/AnalysisResults/README.md).
+All four endpoints require an authenticated Technician or Biologist. Writes also
+require X-CSRF-TOKEN obtained after login. Anonymous calls return 401; denied roles
+return 403. The former local-access flag no longer grants access.
+EnteredBy is the authenticated user GUID, never client input. There is no
+biological validation or automatic workflow transition. Use synthetic data only;
+public or clinical deployment requires operational security review.
+See [authentication and local administration](../src/Clinisys.API/Authentication/README.md).
 
 ## Routes and responses
 
@@ -39,10 +22,10 @@ GUID routes do not match and return 404; empty GUIDs reaching the use case retur
 
 | Method | Route | Success | Other documented statuses |
 | --- | --- | --- | --- |
-| POST | `/api/laboratory-requests/{requestId}/items/{itemId}/result` | 201, detail JSON and Location pointing to GET | 400, 404, 409, 503, 500 |
-| PUT | `/api/laboratory-requests/{requestId}/items/{itemId}/result` | 200, detail JSON with new Version | 400, 404, 409, 503, 500 |
-| GET | `/api/laboratory-requests/{requestId}/items/{itemId}/result` | 200, detail JSON | 400, 404, 409, 503, 500 |
-| GET | `/api/laboratory-requests/{requestId}/results` | 200, list JSON | 400, 404, 409, 503, 500 |
+| POST | `/api/laboratory-requests/{requestId}/items/{itemId}/result` | 201, detail JSON and Location pointing to GET | 400, 401, 403, 404, 409, 503, 500 |
+| PUT | `/api/laboratory-requests/{requestId}/items/{itemId}/result` | 200, detail JSON with new Version | 400, 401, 403, 404, 409, 503, 500 |
+| GET | `/api/laboratory-requests/{requestId}/items/{itemId}/result` | 200, detail JSON | 400, 401, 403, 404, 409, 503, 500 |
+| GET | `/api/laboratory-requests/{requestId}/results` | 200, list JSON | 400, 401, 403, 404, 409, 503, 500 |
 
 There is no DELETE, upsert or validation endpoint. All responses under these routes
 use `Cache-Control: no-store`. GET 409 is an exceptional SQL deadlock, not a business
@@ -99,7 +82,7 @@ Detail DTO (POST, PUT and individual GET):
   "referenceUpperBoundSnapshot": 2,
   "abnormality": "Normal",
   "enteredAt": "2026-10-25T10:00:00+00:00",
-  "enteredBy": "LOCAL-UNAUTHENTICATED",
+  "enteredBy": "11111111-1111-4111-8111-111111111111",
   "validatedAt": null,
   "validatedBy": null,
   "version": "AAAAAAAAB9E="

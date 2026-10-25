@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using Clinisys.Application.Features.Authentication;
 using Clinisys.Application.Features.Patients;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +9,7 @@ namespace Clinisys.API.Controllers;
 [Route("api/patients")]
 public sealed class PatientsController(PatientCommands commands, PatientQueries queries) : ControllerBase
 {
+    [Authorize(Policy = AuthenticationPermissions.PatientsSearch)]
     [HttpGet]
     [ProducesResponseType<PatientPage>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -15,6 +18,7 @@ public sealed class PatientsController(PatientCommands commands, PatientQueries 
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
     public Task<PatientPage> List([FromQuery] PatientPageQuery query, CancellationToken ct) => queries.SearchAsync(query, ct);
+    [Authorize(Policy = AuthenticationPermissions.PatientsReadDetail)]
     [HttpGet("{id:guid}")]
     [ProducesResponseType<PatientDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
@@ -23,6 +27,7 @@ public sealed class PatientsController(PatientCommands commands, PatientQueries 
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
     public Task<PatientDetailDto> Get(Guid id, CancellationToken ct) => queries.GetAsync(id, ct);
+    [Authorize(Policy = AuthenticationPermissions.PatientsWrite)]
     [HttpPost]
     [ProducesResponseType<PatientDetailDto>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -34,6 +39,7 @@ public sealed class PatientsController(PatientCommands commands, PatientQueries 
         var result = await commands.CreateAsync(input, ct);
         return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
     }
+    [Authorize(Policy = AuthenticationPermissions.PatientsWrite)]
     [HttpPut("{id:guid}")]
     [ProducesResponseType<PatientDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]

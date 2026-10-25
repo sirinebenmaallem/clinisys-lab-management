@@ -17,7 +17,9 @@ public sealed class ModelConfigurationTests
     public void Model_HasTenBusinessTablesAndTechnicalCounterWithoutCascadeDelete()
     {
         using var db = CreateContext();
-        Assert.Equal(11, db.Model.GetEntityTypes().Count());
+        Assert.Equal(18, db.Model.GetEntityTypes().Count());
+        Assert.Equal(10, db.Model.GetEntityTypes().Count(e => e.ClrType.Namespace == typeof(Patient).Namespace));
+        Assert.NotNull(db.Model.FindEntityType(typeof(LaboratoryRequestCounter)));
         Assert.All(db.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()),
             fk => Assert.Equal(DeleteBehavior.NoAction, fk.DeleteBehavior));
         Assert.All(db.Model.GetEntityTypes().Where(x => typeof(Clinisys.Domain.Common.Entity).IsAssignableFrom(x.ClrType)), entity =>
@@ -90,11 +92,11 @@ public sealed class ModelConfigurationTests
     }
 
     [Fact]
-    public void CounterMigration_IsAdditiveAndMatchesTheCurrentModel()
+    public void CounterMigration_RemainsAdditiveAndCurrentSnapshotMatchesModel()
     {
         using var db = CreateContext();
         var assembly = db.GetService<IMigrationsAssembly>();
-        Assert.Equal(2, assembly.Migrations.Count);
+        Assert.Equal(4, assembly.Migrations.Count);
         var entry = Assert.Single(assembly.Migrations, x => x.Key.EndsWith("_AddLaboratoryRequestCounters"));
         var migration = assembly.CreateMigration(entry.Value, db.Database.ProviderName!);
         var table = Assert.IsType<CreateTableOperation>(Assert.Single(migration.UpOperations));

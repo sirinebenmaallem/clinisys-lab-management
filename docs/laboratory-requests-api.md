@@ -1,6 +1,7 @@
 # Step 05 — Laboratory requests
 
-Assessment use only: authentication and authorization are not implemented. Use
+Step 07 requires authentication: reads allow all three business roles; creation
+requires Secretary and CSRF protection. Use
 synthetic data in a trusted local environment; never expose these APIs publicly or
 use real patient data. This step implements registration and reads only, without
 PUT, DELETE, cancellation, status transitions, results, biological validation or PDF.

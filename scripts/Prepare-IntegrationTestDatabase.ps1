@@ -9,10 +9,18 @@ try {
     Get-Command sqlcmd -ErrorAction Stop | Out-Null
     # Deliberately independent of development connection settings and ambient overrides.
     $testConnectionString = 'Server=.\SQLEXPRESS;Database=ClinisysTestDb;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;Connect Timeout=5'
-    $approvedMigrations = @('20261023192710_InitialCreate', '20261024175903_AddLaboratoryRequestCounters')
+    $approvedMigrations = @('20261023192710_InitialCreate', '20261024175903_AddLaboratoryRequestCounters', '20261025202446_AddAuthenticationIdentity', '20261025225017_FixAuthenticationUserNameCheck')
     $migrationFiles = @(Get-ChildItem 'src/Clinisys.Infrastructure/Persistence/Migrations/*_*.cs' |
         Where-Object { $_.Name -notlike '*.Designer.cs' } | Sort-Object BaseName)
-    if (Compare-Object $approvedMigrations @($migrationFiles.BaseName)) { throw 'Unrecognized migration files.' }
+    if ($migrationFiles.Count -ne $approvedMigrations.Count) { throw 'Unrecognized migration files.' }
+    for ($migrationIndex = 0; $migrationIndex -lt $approvedMigrations.Count; $migrationIndex++) {
+        if (-not [string]::Equals($approvedMigrations[$migrationIndex], $migrationFiles[$migrationIndex].BaseName, [StringComparison]::Ordinal)) {
+            throw 'Unrecognized or incorrectly ordered migration files.'
+        }
+    }
+    $approvedMigrationValues = $(for ($migrationIndex = 0; $migrationIndex -lt $approvedMigrations.Count; $migrationIndex++) {
+        "($($migrationIndex + 1), N'$($approvedMigrations[$migrationIndex])')"
+    }) -join ",`n"
     $migrationId = $approvedMigrations[-1]
 
     # Read-only master probe; no DDL or data changes to master or ClinisysDb.
@@ -29,7 +37,8 @@ IF EXISTS (SELECT 1 FROM sys.databases WHERE database_id = DB_ID()
 IF EXISTS (SELECT 1 FROM sys.tables WHERE is_ms_shipped = 0 AND
     (SCHEMA_NAME(schema_id) <> N'dbo' OR name NOT IN
     (N'__EFMigrationsHistory',N'Patients',N'MedicalAnalyses',N'ReferenceRanges',N'AnalysisPanels',
-     N'PanelAnalyses',N'LaboratoryRequests',N'RequestPanels',N'RequestItems',N'AnalysisResults',N'AuditEntries',N'LaboratoryRequestCounters')))
+     N'PanelAnalyses',N'LaboratoryRequests',N'RequestPanels',N'RequestItems',N'AnalysisResults',N'AuditEntries',N'LaboratoryRequestCounters',
+     N'AuthUsers',N'AuthRoles',N'AuthUserRoles',N'AuthUserClaims',N'AuthRoleClaims',N'AuthUserLogins',N'AuthUserTokens')))
     THROW 51002, 'Unrecognized tables. No data will be overwritten.', 1;
 IF OBJECT_ID(N'dbo.__EFMigrationsHistory', N'U') IS NULL
 BEGIN
@@ -38,15 +47,27 @@ BEGIN
 END
 ELSE
 BEGIN
-    IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId NOT IN
-        (N'$($approvedMigrations[0])',N'$migrationId'))
+    DECLARE @approved TABLE (Ordinal int NOT NULL PRIMARY KEY,
+        MigrationId nvarchar(150) COLLATE Latin1_General_100_BIN2 NOT NULL UNIQUE);
+    INSERT INTO @approved (Ordinal, MigrationId) VALUES
+$approvedMigrationValues;
+    IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory h
+        LEFT JOIN @approved a ON h.MigrationId COLLATE Latin1_General_100_BIN2 = a.MigrationId
+            AND DATALENGTH(h.MigrationId) = DATALENGTH(a.MigrationId)
+        WHERE a.Ordinal IS NULL)
         THROW 51004, 'Unexpected migration history. Downgrades are forbidden.', 1;
-    IF NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$($approvedMigrations[0])')
+    -- EF history has no application timestamp: validate the canonical ID order,
+    -- including holes/duplicates, rather than claiming to know execution chronology.
+    IF EXISTS (SELECT 1 FROM
+        (SELECT MigrationId, ROW_NUMBER() OVER (ORDER BY MigrationId COLLATE Latin1_General_100_BIN2) AS AppliedOrdinal
+         FROM dbo.__EFMigrationsHistory) h
+        LEFT JOIN @approved a ON h.MigrationId COLLATE Latin1_General_100_BIN2 = a.MigrationId
+            AND DATALENGTH(h.MigrationId) = DATALENGTH(a.MigrationId)
+        WHERE a.Ordinal IS NULL OR h.AppliedOrdinal <> a.Ordinal)
+        THROW 51008, 'Migration history is not an approved contiguous prefix.', 1;
+    IF NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory)
         AND EXISTS (SELECT 1 FROM sys.tables WHERE is_ms_shipped = 0 AND name <> N'__EFMigrationsHistory')
         THROW 51005, 'Existing schema without InitialCreate. Manual review required.', 1;
-    IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$migrationId')
-        AND NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'$($approvedMigrations[0])')
-        THROW 51008, 'Migration history is not an approved prefix.', 1;
 END;
 "@
         & sqlcmd -S '.\SQLEXPRESS' -E -C -l 5 -b -d ClinisysTestDb -Q $preflight

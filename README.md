@@ -8,7 +8,9 @@ yet. Step 05 adds registration and consultation of laboratory
 requests; its additive counter migration and SQL tests have been validated locally.
 Step 06 adds creation, correction and consultation of numeric analysis results,
 frozen reference bounds and abnormality evaluation. Results cannot yet be officially
-validated. This application is not ready for production.
+validated. Step 07 adds standard ASP.NET Core Identity, secure cookies, CSRF
+protection and server-side role authorization. This application is not ready
+for production.
 
 ## Technology stack
 
@@ -26,17 +28,17 @@ in Application when needed; no MediatR or CQRS framework is installed.
 | Project | Responsibility | Direct project references |
 | --- | --- | --- |
 | `src/Clinisys.Domain` | Entities, enums, reference interval and construction rules | None |
-| `src/Clinisys.Application` | Catalogue, patient, request and result commands/queries, DTOs, persistence/actor ports and pure reference selection | Domain |
-| `src/Clinisys.Infrastructure` | EF mappings, stores, SQL transactions, locks, rowversion concurrency and dependency injection | Application, Domain |
-| `src/Clinisys.API` | HTTP controllers, sanitized errors, composition root and temporary local result-access policy | Application, Infrastructure |
+| `src/Clinisys.Application` | Catalogue, patient, request and result commands/queries, DTOs, persistence/actor ports, authentication contracts and pure reference selection | Domain |
+| `src/Clinisys.Infrastructure` | EF mappings, stores, SQL transactions, locks, rowversion concurrency, standard Identity EF stores and dependency injection | Application, Domain |
+| `src/Clinisys.API` | HTTP controllers, sanitized errors, composition root, cookies, CSRF, role policies and local administration | Application, Infrastructure |
 | `tests/Clinisys.Tests` | HTTP, domain, EF model and opt-in SQL integration tests | API, Domain, Infrastructure |
 
 Dependencies point toward the inner layers. Infrastructure implements
 interfaces owned by Application. Domain and Application have no EF dependency.
 Catalogue commands and queries are separated without MediatR or generic repositories.
-Step 07 will add authentication and the Secretary, Technician and Biologist roles.
+Step 07 implements authentication and the Secretary, Technician and Biologist roles.
 Step 08 will add official validation reserved to the biologist and workflow transitions.
-Neither is implemented yet; entering a result is never official validation.
+Official validation is not implemented; entering a result is never validation.
 
 ## Catalogue API (Step 03)
 
@@ -46,8 +48,7 @@ reference-range management with overlap checks, and panel-analysis associations.
 Catalogue changes preserve historical snapshots. No schema change or new migration
 is required for Step 03; Step 05 adds the separate counter migration.
 
-The endpoints are **not authenticated or authorized**. Run only in a trusted local
-development environment until access controls are implemented.
+Reads require any business role; writes require Biologist and CSRF protection.
 
 ## Patient API (Step 04)
 
@@ -57,8 +58,8 @@ Lists omit identity/phone; detail responses provide a Base64 version required by
 Patient responses use no-store. Shared phones are allowed; national identities are unique.
 No DELETE or migration is added. Existing laboratory request snapshots are preserved.
 
-**Use synthetic data only. Authentication and authorization are not implemented;
-do not publicly deploy these endpoints or use real patient data.** Run the solution
+**Use synthetic data only; public deployment is not approved.** Search allows all
+three roles; patient detail and writes require Secretary. Run the solution
 tests below with the isolated SQL connection to include patient and catalogue tests.
 
 ## Analysis results API (Step 06)
@@ -69,21 +70,74 @@ The four endpoints create, correct and read numeric results, including lists of
 requested items without a result. Reference bounds are frozen at first entry;
 corrections preserve those bounds and recalculate abnormality. No new migration is required.
 
-**Result endpoints are disabled by default and refuse Production.** Explicit local
-activation is only for synthetic Development/Testing sessions; do not publish them
-or use real patient data. The temporary server actor is `LOCAL-UNAUTHENTICATED`.
+Result endpoints require Technician or Biologist and CSRF protection on writes.
+The actor is the authenticated user GUID. The local-access flag and temporary
+anonymous actor have been removed.
 
 Local Step 06-E2 validation on `ClinisysTestDb`: all **24 AnalysisResults SQL tests**
 passed, both targeted LaboratoryRequests deadlock scenarios passed after test
 synchronization was stabilized, and the full Release suite passed **362 tests,
 0 failed, 0 skipped**. These results do not validate or prepare other environments.
 
+## Authentication and authorization (Step 07)
+
+See [HTTP authentication, CSRF, HTTPS, Data Protection and local administration](src/Clinisys.API/Authentication/README.md)
+and [Identity persistence and migrations](src/Clinisys.Infrastructure/Authentication/README.md).
+UserManager, RoleManager, SignInManager and standard EF stores are used; there is
+no custom runtime store, public registration or HTTP account administration.
+Users may hold multiple business roles; permissions are their union.
+
+| Operation | Secretary | Technician | Biologist |
+| --- | --- | --- | --- |
+| Catalogue reads, patient search, request reads | Yes | Yes | Yes |
+| Patient detail (CIN/phone), patient writes, request creation | Yes | No | No |
+| Catalogue writes | No | No | Yes |
+| Result reads and writes | No | Yes | Yes |
+
+Business APIs require authentication by default. GET /api/health,
+GET /api/auth/antiforgery and POST /api/auth/login allow anonymous access.
+GET /api/auth/session requires authentication. POST /api/auth/logout revokes
+sessions globally. Send X-CSRF-TOKEN on unsafe requests, including login and logout;
+fetch a fresh token after login. The cookie is Secure, HttpOnly, SameSite=Lax,
+with absolute 30-minute expiry and no remember-me. API failures return 401/403
+without HTML redirects; responses are no-store.
+
+Initial accounts use the elevated interactive local command:
+`dotnet run --project src/Clinisys.API --configuration Release -- --manage-users`.
+Authorize and securely configure the target first; confirm the database when
+prompted. Password input is hidden, never passed in arguments or stored in Git.
+No business role grants account administration. Biological validation remains Step 08.
+
+HTTPS is required. Production startup requires DataProtection:KeyDirectory;
+persist keys with Windows DPAPI and service-account-only directory ACLs.
+Development requires a usable protected persistent user profile. Hosting, proxy
+configuration and SQL least privilege require review before deployment.
+
+The approved migration chain is InitialCreate, AddLaboratoryRequestCounters,
+AddAuthenticationIdentity, then FixAuthenticationUserNameCheck. Back up the target,
+review history/schema, and separately authorize the appropriate preparation command
+below. Test preparation also configures the restricted test principal; both scripts
+initialize missing request counters. Neither provisions business accounts.
+There is no automatic startup migration. Identity and the CHECK correction were
+applied and verified locally on ClinisysTestDb; this does not validate or migrate
+ClinisysDb or any other environment.
+
+Latest complete local Release regression reported: **463 passed, 0 failed, 0 skipped**
+with ClinisysTestDb, including six real Identity SQL/cookie tests. This run is not
+repeated during commit preparation. For a separately authorized rerun, configure
+CLINISYS_SQL_TEST_CONNECTION using the isolated connection below and execute
+`dotnet test Clinisys.slnx --configuration Release --no-build`.
+The targeted filter is
+`FullyQualifiedName~Clinisys.Tests.Authentication.AuthenticationSqlTests`.
+Synthetic accounts use rollback-only transactions and existing restricted helpers;
+this does not validate production privileges or committed account provisioning.
+
 ## Local setup
 
 See [Step 05 request contracts, numbering, transactions and deployment prerequisites](docs/laboratory-requests-api.md).
 The new API requires the separately reviewed counter migration and controlled historical
 initialization. Do not run the database preparation/update commands below without that
-authorization. InitialCreate is unchanged; scripts now recognize the two approved migrations.
+authorization. InitialCreate is unchanged; scripts now recognize the four approved migrations in order.
 Previously recorded Step 04 SQL test results below describe that earlier schema.
 For Step 05, migration `20261024175903_AddLaboratoryRequestCounters` was applied locally
 to `ClinisysTestDb` and `ClinisysDb`, after backing up `ClinisysDb`. The Release run
@@ -100,15 +154,16 @@ dotnet --version
 dotnet restore Clinisys.slnx
 dotnet build Clinisys.slnx --no-restore
 dotnet test Clinisys.slnx --no-build
-dotnet run --project src/Clinisys.API --launch-profile http
+dotnet run --project src/Clinisys.API --launch-profile https
 ```
 
-The HTTP launch profile uses `http://localhost:5138` in Development.
+Cookie authentication requires HTTPS. Trust the local certificate first with
+`dotnet dev-certs https --trust`; the HTTPS profile uses `https://localhost:7158`.
 In a second terminal:
 
 ```powershell
-Invoke-RestMethod http://localhost:5138/api/health
-Invoke-RestMethod http://localhost:5138/openapi/v1.json
+Invoke-RestMethod https://localhost:7158/api/health
+Invoke-RestMethod https://localhost:7158/openapi/v1.json
 ```
 
 `GET /api/health` returns HTTP 200 with `{"status":"Healthy"}`. It reports that
@@ -173,8 +228,8 @@ verify the development database is inaccessible and reopening a connection reapp
 the restriction. No SQL password, server login or secret file is created.
 
 Tests use synthetic records with transaction rollback or targeted cleanup of their
-own committed fixtures. Historical Step 04 results follow; the current Step 06
-Release result is recorded above. The original ten SQL tests cover
+own committed fixtures. Historical Step 04 results follow; current Step 07
+Release validation is recorded in the authentication section. The original ten SQL tests cover
 schema/migration consistency, restricted access, uniqueness, foreign keys, deletion
 restrictions, snapshots, decimal round trips, initial status and audit fields. Step 03
 adds ten real HTTP/SQL scenarios and a two-connection overlap concurrency test. The
@@ -193,8 +248,8 @@ with no warnings; the isolated SQL run passed all 84 tests. The sandbox could no
 initialize SqlClient encryption, so the SQL run used the same restricted test setup
 outside the sandbox without weakening encryption or changing database configuration.
 
-After starting the API with the HTTP launch profile, run the read-only Development
-smoke check in another terminal:
+The original Step 03 smoke script predates authentication. Its catalogue calls now
+require a cookie; this command is historical, not an anonymous Step 07 smoke check:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Test-CatalogDevelopment.ps1

@@ -1,6 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Clinisys.Tests;
 
@@ -16,7 +20,12 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
     [Fact]
     public async Task GetHealth_ReturnsOkWithHealthyJson()
     {
-        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        using var host = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureLogging(logging => logging.ClearProviders());
+            builder.ConfigureServices(services => services.AddDataProtection().UseEphemeralDataProtectionProvider());
+        });
+        using var client = host.CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = new Uri("https://localhost"),
             AllowAutoRedirect = false

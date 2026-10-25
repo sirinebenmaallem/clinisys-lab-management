@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Clinisys.API.Controllers;
 
 [ApiController]
+[Microsoft.AspNetCore.Authorization.AllowAnonymous]
 [Route("api/health")]
 public sealed class HealthController : ControllerBase
 {

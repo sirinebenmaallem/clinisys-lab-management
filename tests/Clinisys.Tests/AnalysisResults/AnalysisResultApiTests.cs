@@ -1,3 +1,4 @@
+using Clinisys.Tests.Authentication;
 using System.Data.Common;
 using System.Net;
 using System.Net.Http.Json;
@@ -28,43 +29,29 @@ public sealed class AnalysisResultApiTests
     private static readonly string Version = Convert.ToBase64String([1, 2, 3, 4, 5, 6, 7, 8]);
 
     [Theory]
-    [InlineData(null, "Development", "127.0.0.1", "127.0.0.1", null)]
-    [InlineData("false", "Development", "127.0.0.1", "127.0.0.1", null)]
-    [InlineData("invalid", "Development", "127.0.0.1", "127.0.0.1", null)]
-    [InlineData("true", "Production", "127.0.0.1", "127.0.0.1", null)]
-    [InlineData("true", "Staging", "127.0.0.1", "127.0.0.1", null)]
-    [InlineData("true", "Development", "192.0.2.10", "127.0.0.1", null)]
-    [InlineData("true", "Development", "127.0.0.1", "192.0.2.11", null)]
-    [InlineData("true", "Development", null, "127.0.0.1", null)]
-    [InlineData("true", "Testing", "127.0.0.1", null, null)]
-    [InlineData("true", "Testing", "127.0.0.1", "127.0.0.1", "Forwarded")]
-    [InlineData("true", "Development", "127.0.0.1", "127.0.0.1", "X-Forwarded-For")]
-    [InlineData("true", "Development", "127.0.0.1", "127.0.0.1", "X-Forwarded-Host")]
-    [InlineData("true", "Development", "127.0.0.1", "127.0.0.1", "X-Real-IP")]
-    public async Task Gate_FailsClosedForAllEndpointsBeforeBindingOrStoreResolution(string? enabled, string environment,
-        string? remote, string? local, string? proxyHeader)
+    [InlineData(null, 401)]
+    [InlineData("Secretary", 403)]
+    public async Task Authorization_RejectsBeforeBindingOrPersistence(string? role, int status)
     {
-        using var host = new Host(enabled, environment, remote, local);
+        using var host = new Host(role);
         using var client = host.Client();
-        if (proxyHeader is not null) client.DefaultRequestHeaders.Add(proxyHeader, "SYN-PRIVATE");
         foreach (var method in new[] { HttpMethod.Post, HttpMethod.Put, HttpMethod.Get })
         {
             using var request = new HttpRequestMessage(method, DetailRoute);
             if (method != HttpMethod.Get) request.Content = new StringContent("invalid JSON SYN-PRIVATE", Encoding.UTF8, "application/json");
-            await Problem(await client.SendAsync(request), 404);
+            await Problem(await client.SendAsync(request), status);
         }
-        await Problem(await client.GetAsync(ListRoute), 404);
+        await Problem(await client.GetAsync(ListRoute), status);
         Assert.Equal(0, host.State.Resolutions);
         Assert.Equal(0, host.State.Calls);
     }
-
     [Theory]
-    [InlineData("Development", "127.0.0.1")]
-    [InlineData("Testing", "::1")]
-    [InlineData("Development", "::ffff:127.0.0.1")]
-    public async Task ExplicitLocalActivation_AllowsLifecycleWithOnlyServerActor(string environment, string address)
+    [InlineData("Technician")]
+    [InlineData("Biologist")]
+
+    public async Task AuthenticatedRole_AllowsLifecycleWithOnlyServerActor(string role)
     {
-        using var host = new Host("true", environment, address, address);
+        using var host = new Host(role);
         using var client = host.Client();
         client.DefaultRequestHeaders.Add("X-Actor", "SYN-PRIVATE");
         client.DefaultRequestHeaders.Add("EnteredBy", "SYN-PRIVATE");
@@ -75,7 +62,7 @@ public sealed class AnalysisResultApiTests
         Assert.True(created.Headers.CacheControl?.NoStore);
         var result = await Body(created);
         Assert.Equal(0, result.GetProperty("value").GetDecimal());
-        Assert.Equal("LOCAL-UNAUTHENTICATED", result.GetProperty("enteredBy").GetString());
+        Assert.Equal(AuthenticatedApiTestSupport.ActorId.ToString(), result.GetProperty("enteredBy").GetString());
         Assert.DoesNotContain("SYN-PRIVATE", result.ToString());
         var firstVersion = result.GetProperty("version").GetString();
 
@@ -85,7 +72,7 @@ public sealed class AnalysisResultApiTests
         var corrected = await Body(updated);
         Assert.Equal(1.5m, corrected.GetProperty("value").GetDecimal());
         Assert.NotEqual(firstVersion, corrected.GetProperty("version").GetString());
-        Assert.Equal("LOCAL-UNAUTHENTICATED", corrected.GetProperty("enteredBy").GetString());
+        Assert.Equal(AuthenticatedApiTestSupport.ActorId.ToString(), corrected.GetProperty("enteredBy").GetString());
         Assert.Equal(8, Convert.FromBase64String(corrected.GetProperty("version").GetString()!).Length);
 
         using var detail = await client.GetAsync(created.Headers.Location);
@@ -212,9 +199,9 @@ public sealed class AnalysisResultApiTests
     }
 
     [Fact]
-    public async Task OtherEndpoints_RemainAvailableWhenResultsAreDisabled()
+    public async Task Health_RemainsAvailableWithoutAuthentication()
     {
-        using var host = new Host(enabled: null);
+        using var host = new Host(role: null);
         using var client = host.Client();
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/health")).StatusCode);
         Assert.Equal(0, host.State.Resolutions);
@@ -247,19 +234,16 @@ public sealed class AnalysisResultApiTests
         public Exception? Failure;
         public AnalysisResultDetailDto? Result;
     }
-    private sealed class Host(string? enabled = "true", string environment = "Development",
-        string? remote = "127.0.0.1", string? local = "127.0.0.1") : WebApplicationFactory<Program>
+    private sealed class Host(string? role = "Technician") : WebApplicationFactory<Program>
     {
         public State State { get; } = new();
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseEnvironment(environment);
-            // Do not write Windows EventLog or external telemetry from in-memory tests.
+            builder.UseEnvironment("Development");
             builder.ConfigureLogging(logging => logging.ClearProviders());
-            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
-                { [AnalysisResultLocalAccess.ConfigurationKey] = enabled }));
             builder.ConfigureServices(services =>
             {
+                services.AddTestAuthentication(role == null ? [] : [role]);
                 services.RemoveAll<IAnalysisResultStore>();
                 services.AddScoped<IAnalysisResultStore>(provider =>
                 {
@@ -268,25 +252,9 @@ public sealed class AnalysisResultApiTests
                 });
                 services.RemoveAll<ClinisysDbContext>();
                 services.AddScoped<ClinisysDbContext>(_ => throw new InvalidOperationException("SQL forbidden in this HTTP test."));
-                // Trusted test-server setup, not an HTTP header or client identity.
-                services.AddSingleton<IStartupFilter>(new ConnectionSetup(remote, local));
             });
         }
-        public HttpClient Client() => CreateClient(new WebApplicationFactoryClientOptions
-            { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
-    }
-    private sealed class ConnectionSetup(string? remote, string? local) : IStartupFilter
-    {
-        public Action<Microsoft.AspNetCore.Builder.IApplicationBuilder> Configure(Action<Microsoft.AspNetCore.Builder.IApplicationBuilder> next) => app =>
-        {
-            app.Use(async (context, continuation) =>
-            {
-                context.Connection.RemoteIpAddress = remote is null ? null : IPAddress.Parse(remote);
-                context.Connection.LocalIpAddress = local is null ? null : IPAddress.Parse(local);
-                await continuation();
-            });
-            next(app);
-        };
+        public HttpClient Client() => this.AuthenticatedClient();
     }
     private sealed class FakeStore(State state, IAnalysisResultActorProvider actor) : IAnalysisResultStore
     {
