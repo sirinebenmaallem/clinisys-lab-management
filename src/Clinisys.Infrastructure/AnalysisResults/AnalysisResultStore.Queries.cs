@@ -11,7 +11,7 @@ public sealed partial class AnalysisResultStore
             item.AnalysisCodeSnapshot, item.AnalysisNameSnapshot, item.UnitSnapshot,
             result.Value, result.ReferenceLowerBoundSnapshot, result.ReferenceUpperBoundSnapshot,
             result.Abnormality, result.EnteredAt, result.EnteredBy, result.ValidatedAt, result.ValidatedBy,
-            Convert.ToBase64String(result.Version));
+            Convert.ToBase64String(result.Version), result.IsCalculated);
 
     public async Task<AnalysisResultDetailDto?> GetAsync(Guid requestId, Guid itemId, CancellationToken ct)
     {
@@ -39,9 +39,14 @@ public sealed partial class AnalysisResultStore
                               where item.LaboratoryRequestId == requestId
                               orderby item.AnalysisCodeSnapshot, item.Id
                               select new { Item = item, Result = result }).ToListAsync(ct);
+            var calculation = LdlCalculation.Evaluate(ldlCodes, rows.Select(x => x.Item).ToArray(),
+                rows.Where(x => x.Result is not null).Select(x => x.Result!).ToArray());
+            if (calculation.Status == "Calculated" &&
+                !rows.Any(x => x.Item.Id == calculation.RequestItemId && x.Result is not null))
+                calculation = calculation with { Status = "NotCalculated", Value = null };
             return new(requestId, rows.Select(x => new AnalysisResultListItemDto(x.Item.Id, x.Item.MedicalAnalysisId,
                 x.Item.AnalysisCodeSnapshot, x.Item.AnalysisNameSnapshot, x.Item.UnitSnapshot,
-                x.Result is null ? null : Detail(x.Item, x.Result))).ToArray());
+                x.Result is null ? null : Detail(x.Item, x.Result))).ToArray(), calculation);
         }
         catch (Exception ex) when (SqlNumber(ex) == 1205) { throw AnalysisResultException.Conflict(); }
     }

@@ -142,6 +142,15 @@ all five workflow SQL tests and the full Release regression: **511 passed,
 
 ## Local setup
 
+Step 09 adds [automatic Friedewald LDL calculation](docs/ldl-calculation.md), using
+explicit server-side catalogue codes, recognized matching units and audited
+recalculation. Manual LDL results are preserved. Its additive IsCalculated migration
+has been applied only on the local ClinisysTestDb after a verified backup. Other
+databases require separate review/application. Test-only catalogue codes are not
+production configuration.
+Local Step 09 validation passed five LDL SQL tests and the full Release suite:
+**549 passed, 0 failed, 0 skipped**, using ClinisysTestDb only.
+
 See [Step 05 request contracts, numbering, transactions and deployment prerequisites](docs/laboratory-requests-api.md).
 The new API requires the separately reviewed counter migration and controlled historical
 initialization. Do not run the database preparation/update commands below without that

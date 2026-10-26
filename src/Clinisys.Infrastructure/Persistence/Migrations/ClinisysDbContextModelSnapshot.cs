@@ -77,6 +77,11 @@ namespace Clinisys.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<bool>("IsCalculated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<decimal?>("ReferenceLowerBoundSnapshot")
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");

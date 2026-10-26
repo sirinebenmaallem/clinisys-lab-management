@@ -14,12 +14,12 @@ public sealed record AnalysisResultDetailDto(Guid Id, Guid LaboratoryRequestId, 
     Guid MedicalAnalysisId, string AnalysisCodeSnapshot, string AnalysisNameSnapshot, string UnitSnapshot,
     decimal Value, decimal? ReferenceLowerBoundSnapshot, decimal? ReferenceUpperBoundSnapshot,
     Abnormality Abnormality, DateTimeOffset EnteredAt, string EnteredBy,
-    DateTimeOffset? ValidatedAt, string? ValidatedBy, string Version);
+    DateTimeOffset? ValidatedAt, string? ValidatedBy, string Version, bool IsCalculated = false, LdlCalculationDto? LdlCalculation = null);
 
 public sealed record AnalysisResultListItemDto(Guid RequestItemId, Guid MedicalAnalysisId,
     string AnalysisCodeSnapshot, string AnalysisNameSnapshot, string UnitSnapshot, AnalysisResultDetailDto? Result);
 
-public sealed record AnalysisResultListDto(Guid LaboratoryRequestId, IReadOnlyList<AnalysisResultListItemDto> Items);
+public sealed record AnalysisResultListDto(Guid LaboratoryRequestId, IReadOnlyList<AnalysisResultListItemDto> Items, LdlCalculationDto? LdlCalculation = null);
 
 // Implementations must check parent/item membership and editability inside their
 // transaction. Create rejects duplicates; Update requires an existing result and

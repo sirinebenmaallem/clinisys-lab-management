@@ -81,7 +81,7 @@ public sealed class IdentityPersistenceTests
         using var db = Context();
         var assembly = db.GetService<IMigrationsAssembly>();
         Assert.Equal(new[] { "20261023192710_InitialCreate", "20261024175903_AddLaboratoryRequestCounters",
-            "20261025202446_AddAuthenticationIdentity", "20261025225017_FixAuthenticationUserNameCheck" }, assembly.Migrations.Keys.Order(StringComparer.Ordinal));
+            "20261025202446_AddAuthenticationIdentity", "20261025225017_FixAuthenticationUserNameCheck", "20261025235303_AddCalculatedAnalysisResult" }, assembly.Migrations.Keys.Order(StringComparer.Ordinal));
         var previous = db.GetService<IModelRuntimeInitializer>().Initialize(assembly.ModelSnapshot!.Model, designTime: true);
         var current = db.GetService<IDesignTimeModel>().Model;
         var diff = db.GetService<IMigrationsModelDiffer>().GetDifferences(previous.GetRelationalModel(), current.GetRelationalModel());
@@ -143,7 +143,7 @@ public sealed class IdentityPersistenceTests
 
         var initializer = db.GetService<IModelRuntimeInitializer>();
         var previous = initializer.Initialize(identity.TargetModel, designTime: true);
-        var current = db.GetService<IDesignTimeModel>().Model;
+        var current = initializer.Initialize(correction.TargetModel, designTime: true);
         var difference = db.GetService<IMigrationsModelDiffer>().GetDifferences(previous.GetRelationalModel(), current.GetRelationalModel());
         Assert.Equal(2, difference.Count);
         Assert.IsType<DropCheckConstraintOperation>(difference[0]);

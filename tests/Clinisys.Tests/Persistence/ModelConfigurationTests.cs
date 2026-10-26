@@ -96,7 +96,7 @@ public sealed class ModelConfigurationTests
     {
         using var db = CreateContext();
         var assembly = db.GetService<IMigrationsAssembly>();
-        Assert.Equal(4, assembly.Migrations.Count);
+        Assert.Equal(5, assembly.Migrations.Count);
         var entry = Assert.Single(assembly.Migrations, x => x.Key.EndsWith("_AddLaboratoryRequestCounters"));
         var migration = assembly.CreateMigration(entry.Value, db.Database.ProviderName!);
         var table = Assert.IsType<CreateTableOperation>(Assert.Single(migration.UpOperations));

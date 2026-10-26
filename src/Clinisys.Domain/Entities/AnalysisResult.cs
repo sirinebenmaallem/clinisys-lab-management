@@ -57,6 +57,11 @@ public sealed class AnalysisResult : Entity
             throw new ArgumentException("The entry instant must be UTC.", nameof(enteredAt));
     }
 
+    public static AnalysisResult CreateCalculated(Guid itemId, decimal value, string actor,
+        ReferenceInterval? interval, DateTimeOffset instant) =>
+        new(itemId, value, actor, interval, instant) { IsCalculated = true };
+
+    public bool IsCalculated { get; private set; }
     public Guid RequestItemId { get; private set; }
     public decimal Value { get; private set; }
     public decimal? ReferenceLowerBoundSnapshot { get; private set; }

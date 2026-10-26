@@ -26,7 +26,9 @@ public static class DependencyInjection
         // result-store resolution fails closed until an authorized server provider exists.
         services.AddScoped<IAnalysisResultStore>(provider => new AnalysisResultStore(
             provider.GetRequiredService<ClinisysDbContext>(), provider.GetRequiredService<TimeProvider>(),
-            provider.GetRequiredService<IAnalysisResultActorProvider>()));
+            provider.GetRequiredService<IAnalysisResultActorProvider>(), new LdlAnalysisCodes(
+                configuration["LdlCalculation:TotalCholesterolCode"], configuration["LdlCalculation:HdlCode"],
+                configuration["LdlCalculation:TriglyceridesCode"], configuration["LdlCalculation:CalculatedLdlCode"])));
         services.AddScoped<IRequestWorkflowStore, RequestWorkflowStore>();
         services.AddScoped<ILaboratoryRequestStore, LaboratoryRequestStore>();
         services.AddScoped<IPatientStore, PatientStore>();

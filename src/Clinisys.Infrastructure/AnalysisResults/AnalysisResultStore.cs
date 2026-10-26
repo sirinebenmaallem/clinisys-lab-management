@@ -13,9 +13,11 @@ public sealed partial class AnalysisResultStore : IAnalysisResultStore
     private readonly ClinisysDbContext db;
     private readonly TimeProvider clock;
     private readonly IAnalysisResultActorProvider actorProvider;
+    private readonly LdlAnalysisCodes ldlCodes;
 
-    public AnalysisResultStore(ClinisysDbContext db, TimeProvider clock, IAnalysisResultActorProvider actorProvider)
+    public AnalysisResultStore(ClinisysDbContext db, TimeProvider clock, IAnalysisResultActorProvider actorProvider, LdlAnalysisCodes? ldlCodes = null)
     {
+        this.ldlCodes = ldlCodes ?? new();
         this.db = db ?? throw new ArgumentNullException(nameof(db));
         this.clock = clock ?? throw new ArgumentNullException(nameof(clock));
         this.actorProvider = actorProvider ?? throw new ArgumentNullException(nameof(actorProvider));
@@ -143,10 +145,14 @@ public sealed partial class AnalysisResultStore : IAnalysisResultStore
         else
         {
             if (result is null) throw AnalysisResultException.NotFound();
+            if (result.IsCalculated) throw AnalysisResultException.Conflict();
             PrepareAuditedCorrection(context, requestId, result, value, version, actor, clock.GetUtcNow().ToUniversalTime());
         }
+        var calculation = await SynchronizeLdl(context, request, item, result, actor, ct);
         await context.SaveChangesAsync(ct);
-        return Detail(item, result);
+        // Keep existing result write/read DTO equality when the optional mapping
+        // is absent. The request-results list still reports NotConfigured.
+        return Detail(item, result) with { LdlCalculation = ldlCodes.IsValid ? calculation : null };
     }
 
     private static void PrepareAuditedCorrection(ClinisysDbContext context, Guid requestId, AnalysisResult result,
