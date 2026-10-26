@@ -7,7 +7,7 @@ public sealed class AuthenticationPermissionTests
     [Theory]
     [InlineData(AuthenticationRoles.Secretary, "Catalog.Read,Patients.ReadDetail,Patients.Search,Patients.Write,Requests.Create,Requests.Deliver,Requests.Read")]
     [InlineData(AuthenticationRoles.Technician, "Catalog.Read,Patients.Search,Requests.Process,Requests.Read,Results.Read,Results.Write")]
-    [InlineData(AuthenticationRoles.Biologist, "Catalog.Read,Catalog.Write,Patients.Search,Requests.Deliver,Requests.Process,Requests.Read,Requests.Validate,Results.Read,Results.Write")]
+    [InlineData(AuthenticationRoles.Biologist, "Catalog.Read,Catalog.Write,Dashboard.Read,Patients.Search,Requests.Deliver,Requests.Process,Requests.Read,Requests.Validate,Results.Read,Results.Write")]
     public void EachRole_HasExactlyItsApprovedPermissions(string role, string expected)
     {
         Assert.True(AuthenticationRoles.IsKnown(role));
@@ -60,7 +60,7 @@ public sealed class AuthenticationPermissionTests
         Assert.DoesNotContain(AuthenticationPermissions.PatientsReadDetail, permissions);
         Assert.DoesNotContain(AuthenticationPermissions.PatientsWrite, permissions);
         Assert.DoesNotContain(AuthenticationPermissions.RequestsCreate, permissions);
-        Assert.Equal(12, AuthenticationPermissions.All.Count);
+        Assert.Equal(13, AuthenticationPermissions.All.Count);
         Assert.DoesNotContain(AuthenticationPermissions.All, x => x.Contains("Users", StringComparison.OrdinalIgnoreCase));
     }
 

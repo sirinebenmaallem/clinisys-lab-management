@@ -23,7 +23,7 @@ try {
         throw 'Only .\SQLEXPRESS / ClinisysDb with Windows authentication is allowed.'
     }
 
-    $approvedMigrations = @('20261023192710_InitialCreate', '20261024175903_AddLaboratoryRequestCounters', '20261025202446_AddAuthenticationIdentity', '20261025225017_FixAuthenticationUserNameCheck', '20261025235303_AddCalculatedAnalysisResult')
+    $approvedMigrations = @('20261023192710_InitialCreate', '20261024175903_AddLaboratoryRequestCounters', '20261025202446_AddAuthenticationIdentity', '20261025225017_FixAuthenticationUserNameCheck', '20261025235303_AddCalculatedAnalysisResult', '20261026155439_AddStatisticsDashboard')
     $migrationFiles = @(Get-ChildItem 'src/Clinisys.Infrastructure/Persistence/Migrations/*_*.cs' |
         Where-Object { $_.Name -notlike '*.Designer.cs' } | Sort-Object BaseName)
     if ($migrationFiles.Count -ne $approvedMigrations.Count) { throw 'Unrecognized migration files.' }

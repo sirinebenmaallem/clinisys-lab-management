@@ -9,7 +9,7 @@ try {
     Get-Command sqlcmd -ErrorAction Stop | Out-Null
     # Deliberately independent of development connection settings and ambient overrides.
     $testConnectionString = 'Server=.\SQLEXPRESS;Database=ClinisysTestDb;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;Connect Timeout=5'
-    $approvedMigrations = @('20261023192710_InitialCreate', '20261024175903_AddLaboratoryRequestCounters', '20261025202446_AddAuthenticationIdentity', '20261025225017_FixAuthenticationUserNameCheck', '20261025235303_AddCalculatedAnalysisResult')
+    $approvedMigrations = @('20261023192710_InitialCreate', '20261024175903_AddLaboratoryRequestCounters', '20261025202446_AddAuthenticationIdentity', '20261025225017_FixAuthenticationUserNameCheck', '20261025235303_AddCalculatedAnalysisResult', '20261026155439_AddStatisticsDashboard')
     $migrationFiles = @(Get-ChildItem 'src/Clinisys.Infrastructure/Persistence/Migrations/*_*.cs' |
         Where-Object { $_.Name -notlike '*.Designer.cs' } | Sort-Object BaseName)
     if ($migrationFiles.Count -ne $approvedMigrations.Count) { throw 'Unrecognized migration files.' }
@@ -102,10 +102,13 @@ IF EXISTS (SELECT 1 FROM sys.database_role_members WHERE member_principal_id = @
     OR EXISTS (SELECT 1 FROM sys.database_permissions WHERE grantee_principal_id = @principal
         AND NOT ((class = 3 AND major_id = SCHEMA_ID(N'dbo') AND state = 'G'
             AND permission_name IN (N'SELECT',N'INSERT',N'UPDATE',N'DELETE',N'VIEW DEFINITION'))
-            OR (class = 0 AND major_id = 0 AND state = 'G' AND permission_name = N'CONNECT')))
+            OR (class = 0 AND major_id = 0 AND state = 'G' AND permission_name = N'CONNECT')
+            OR (class = 1 AND major_id = OBJECT_ID(N'dbo.GetStatisticsDashboard', N'P')
+                AND state = 'G' AND permission_name = N'EXECUTE')))
     THROW 51007, 'Existing test principal has unexpected permissions or ownership. Manual review required.', 1;
 GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [ClinisysIntegrationTests];
 GRANT VIEW DEFINITION ON SCHEMA::dbo TO [ClinisysIntegrationTests];
+GRANT EXECUTE ON OBJECT::dbo.GetStatisticsDashboard TO [ClinisysIntegrationTests];
 SELECT DB_NAME() AS TestDatabase, MigrationId, ProductVersion FROM dbo.__EFMigrationsHistory;
 SELECT name AS TableName FROM sys.tables WHERE is_ms_shipped = 0 ORDER BY name;
 '@

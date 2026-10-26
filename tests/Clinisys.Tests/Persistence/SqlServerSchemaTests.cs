@@ -14,7 +14,7 @@ public sealed class SqlServerSchemaTests
         await using var db = SqlServerTestDatabase.CreateContext();
         var assembly = db.GetService<IMigrationsAssembly>();
         Assert.Equal(new[] { "20261023192710_InitialCreate", "20261024175903_AddLaboratoryRequestCounters",
-            "20261025202446_AddAuthenticationIdentity", "20261025225017_FixAuthenticationUserNameCheck", "20261025235303_AddCalculatedAnalysisResult" }, assembly.Migrations.Keys.Order(StringComparer.Ordinal));
+            "20261025202446_AddAuthenticationIdentity", "20261025225017_FixAuthenticationUserNameCheck", "20261025235303_AddCalculatedAnalysisResult", "20261026155439_AddStatisticsDashboard" }, assembly.Migrations.Keys.Order(StringComparer.Ordinal));
         var operations = assembly.Migrations.OrderBy(x => x.Key)
             .SelectMany(x => assembly.CreateMigration(x.Value, db.Database.ProviderName!).UpOperations).ToArray();
         var tables = operations.OfType<CreateTableOperation>().ToArray();

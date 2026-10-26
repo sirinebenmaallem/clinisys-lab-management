@@ -8,7 +8,7 @@ public sealed class DatabasePreparationScriptTests
 {
     private static readonly string[] Migrations = ["20261023192710_InitialCreate",
         "20261024175903_AddLaboratoryRequestCounters", "20261025202446_AddAuthenticationIdentity",
-        "20261025225017_FixAuthenticationUserNameCheck", "20261025235303_AddCalculatedAnalysisResult"];
+        "20261025225017_FixAuthenticationUserNameCheck", "20261025235303_AddCalculatedAnalysisResult", "20261026155439_AddStatisticsDashboard"];
     private static readonly string[] Tables = ["__EFMigrationsHistory", "Patients", "MedicalAnalyses", "ReferenceRanges",
         "AnalysisPanels", "PanelAnalyses", "LaboratoryRequests", "RequestPanels", "RequestItems", "AnalysisResults",
         "AuditEntries", "LaboratoryRequestCounters", "AuthUsers", "AuthRoles", "AuthUserRoles", "AuthUserClaims",

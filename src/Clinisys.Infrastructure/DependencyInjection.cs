@@ -15,6 +15,8 @@ using Clinisys.Application.Features.AnalysisPanels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Clinisys.Application.Features.Dashboard;
+using Clinisys.Infrastructure.Dashboard;
 
 namespace Clinisys.Infrastructure;
 
@@ -23,6 +25,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(TimeProvider.System);
+        services.AddScoped<IDashboardStore, DashboardStore>();
         services.AddScoped<IPatientAnalysisHistoryStore, PatientAnalysisHistoryStore>();
         services.AddScoped<ILaboratoryReportStore, LaboratoryReportStore>();
         services.AddSingleton<ILaboratoryReportPdf>(_ => new LaboratoryReportPdf(configuration["Laboratory:Name"] ?? "Laboratoire"));

@@ -7,3 +7,6 @@
 .result-evaluation.Invalid, .result-evaluation.NotEvaluated { color: #514738; background: #f6f3ec; }
 .history-chart { display: block; width: 100%; min-width: 480px; }
 figure.panel { margin: 1rem 0; overflow-x: auto; }
+
+.dashboard-bars { display: flex; align-items: flex-end; gap: 2px; height: 180px; padding: 10px; background: white; border-bottom: 1px solid #647a80; }
+.dashboard-bar { flex: 1; min-width: 1px; background: #087f79; }

@@ -86,6 +86,7 @@ window.App = {
   },
   async signedIn(session) {
     this.session = session;
+    jQuery('[data-page="dashboard"]').prop("hidden", !this.has("Biologist"));
     jQuery("#login-screen").prop("hidden", true); jQuery("#workspace").prop("hidden", false);
     jQuery("#session-user").text(session.userName); jQuery("#session-roles").text(session.roles.join(" · "));
     jQuery("#session-expiry").text("Expiration : " + Ui.date(session.expiresAt) + " UTC");

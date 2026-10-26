@@ -15,11 +15,12 @@ public static class AuthenticationPermissions
     public const string RequestsDeliver = "Requests.Deliver";
     public const string ResultsRead = "Results.Read";
     public const string ResultsWrite = "Results.Write";
+    public const string DashboardRead = "Dashboard.Read";
 
     public static IReadOnlyList<string> All { get; } = Array.AsReadOnly(new[]
     {
         CatalogRead, CatalogWrite, PatientsSearch, PatientsReadDetail, PatientsWrite,
-        RequestsRead, RequestsCreate, RequestsProcess, RequestsValidate, RequestsDeliver, ResultsRead, ResultsWrite
+        RequestsRead, RequestsCreate, RequestsProcess, RequestsValidate, RequestsDeliver, ResultsRead, ResultsWrite, DashboardRead
     });
 
     public static IReadOnlyList<string> ForRoles(IEnumerable<string>? roles)
@@ -37,7 +38,7 @@ public static class AuthenticationPermissions
                     permissions.UnionWith([CatalogRead, PatientsSearch, RequestsRead, RequestsProcess, ResultsRead, ResultsWrite]);
                     break;
                 case AuthenticationRoles.Biologist:
-                    permissions.UnionWith([CatalogRead, CatalogWrite, PatientsSearch, RequestsRead, RequestsProcess, RequestsValidate, RequestsDeliver, ResultsRead, ResultsWrite]);
+                    permissions.UnionWith([CatalogRead, CatalogWrite, PatientsSearch, RequestsRead, RequestsProcess, RequestsValidate, RequestsDeliver, ResultsRead, ResultsWrite, DashboardRead]);
                     break;
             }
         }

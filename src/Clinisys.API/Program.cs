@@ -11,6 +11,7 @@ using Clinisys.Application.Features.ReferenceRanges;
 using Clinisys.Application.Features.AnalysisPanels;
 using System.Text.Json.Serialization;
 using Clinisys.API.Authentication;
+using Clinisys.Application.Features.Dashboard;
 
 var builder = WebApplication.CreateBuilder(args.Where(a => a != "--manage-users").ToArray());
 
@@ -33,11 +34,13 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
             return new BadRequestObjectResult(new ValidationProblemDetails(new Dictionary<string, string[]>
             { ["authentication"] = ["Authentication input is missing or invalid."] }) { Status = 400 });
         var isRequest = context.HttpContext.Request.Path.StartsWithSegments("/api/laboratory-requests");
-        if (!isRequest && !context.HttpContext.Request.Path.StartsWithSegments("/api/patients")) return defaultFactory(context);
+        var isDashboard = context.HttpContext.Request.Path.StartsWithSegments("/api/dashboard");
+        if (!isRequest && !context.HttpContext.Request.Path.StartsWithSegments("/api/patients")
+            && !isDashboard) return defaultFactory(context);
         // Binding exception messages can contain submitted values; expose only fixed messages.
         var problem = new ValidationProblemDetails(new Dictionary<string, string[]>
         {
-            [isRequest ? "request" : "patient"] = [isRequest ? "Request input or query is missing or invalid." : "Patient input or query is missing or invalid."]
+            [isDashboard ? "period" : isRequest ? "request" : "patient"] = [isDashboard ? "Dashboard period is missing or invalid." : isRequest ? "Request input or query is missing or invalid." : "Patient input or query is missing or invalid."]
         }) { Status = 400, Title = "One or more validation errors occurred." };
         problem.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
         var result = new BadRequestObjectResult(problem);
@@ -49,6 +52,7 @@ builder.Services.AddExceptionHandler<PatientExceptionHandler>();
 builder.Services.AddExceptionHandler<AuthenticationExceptionHandler>();
 builder.Services.AddExceptionHandler<AnalysisResultExceptionHandler>();
 builder.Services.AddExceptionHandler<LaboratoryRequestExceptionHandler>();
+builder.Services.AddExceptionHandler<DashboardExceptionHandler>();
 builder.Services.AddExceptionHandler<CatalogExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -60,6 +64,7 @@ builder.Services.AddScoped<IRequestWorkflowActorProvider, AuthenticatedRequestWo
 builder.Services.AddScoped<AnalysisResultCommands>();
 builder.Services.AddScoped<AnalysisResultQueries>();
 builder.Services.AddScoped<PatientAnalysisHistoryQueries>();
+builder.Services.AddScoped<DashboardQueries>();
 builder.Services.AddScoped<LaboratoryReportQueries>();
 builder.Services.AddScoped<RequestWorkflowCommands>();
 builder.Services.AddScoped<LaboratoryRequestCommands>();

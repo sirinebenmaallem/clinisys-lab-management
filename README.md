@@ -1,5 +1,67 @@
 # Clinisys
 
+## Tableau de bord statistique (étape 13)
+
+Accès **Biologist uniquement**, via la politique `Dashboard.Read`, à l’onglet
+**Tableau de bord** et à `GET /api/dashboard?from=2026-01-01&to=2026-01-31`.
+Secretary et Technician reçoivent 403 ; une session absente reçoit 401.
+Les dates `from` et `to` sont obligatoires, inclusives et interprétées en UTC.
+La période maximale est de 366 jours. Une période vide renvoie 200 avec des zéros.
+
+Calculs effectués par `dbo.GetStatisticsDashboard(@From date, @To date)` :
+
+- **Demandes par jour** : toutes les demandes créées pendant la période, tous
+  statuts inclus, regroupées par date UTC de `RegisteredAt`. Le graphique affiche
+  aussi les jours sans demande. La borne SQL supérieure est le lendemain de `to`, exclu.
+- **Chiffre d’affaires net validé** : somme des lignes des seules demandes au
+  statut `Validated` (3) ou `Delivered` (4), créées pendant cette même période.
+  `Registered`, `InProgress` et `ResultsEntered` sont exclus. Le calcul par ligne
+  est `ROUND(UnitPriceSnapshot * (100 - DiscountPercentSnapshot) / 100, 2)`
+  puis la somme des lignes, comme `RequestItem.NetPrice` (demi-arrondi à l’écart de zéro).
+  Les prix/remises du catalogue courant et la remise de l’en-tête ne sont pas réappliqués.
+- **Top 10 des analyses demandées** : nombre de lignes par identifiant d’analyse
+  sur toutes les demandes créées dans la période. Les analyses provenant des bilans
+  sont déjà dédoublonnées par demande. Tri par nombre décroissant, puis code ordinal
+  et identifiant ; libellés du catalogue courant, y compris les analyses désactivées.
+
+Ce chiffre d’affaires est une **valeur opérationnelle nette**, pas un montant encaissé
+ni une preuve de facturation. Le modèle actuel ne suit ni paiement, ni facture,
+ni annulation ; aucun statut d’annulation n’est ajouté ou supposé. Aucun symbole
+monétaire ou taux de conversion n’est inventé. Les indicateurs évoluent quand une
+demande de la période passe de provisoire à validée. Aucune donnée personnelle
+n’est renvoyée par ce tableau de bord.
+
+Migration : `20261026155439_AddStatisticsDashboard`. Elle ajoute seulement la
+procédure ; aucune nouvelle table ni modification des règles médicales.
+L’API n’applique pas les migrations au démarrage.
+
+Après sauvegarde vérifiée de la base de démonstration et arrêt de l’API, l’opérateur
+peut appliquer explicitement la migration avec le script contrôlé existant
+(cette commande n’est pas exécutée automatiquement) :
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Update-DevelopmentDatabase.ps1
+dotnet run --project src/Clinisys.API --configuration Release --launch-profile https
+```
+
+Avec un compte SQL applicatif restreint, accorder uniquement `EXECUTE` sur
+`dbo.GetStatisticsDashboard` à ce compte, sans lui donner de droits DDL.
+Dans Chrome : `https://localhost:7158/`, connexion Biologist → Tableau de bord →
+choisir les dates → Rechercher. Le tableau accessible complète le graphique.
+
+Validation isolée (aucune écriture dans `ClinisysDb`) :
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Prepare-IntegrationTestDatabase.ps1
+$env:CLINISYS_SQL_TEST_CONNECTION = 'Server=.\SQLEXPRESS;Database=ClinisysTestDb;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;Connect Timeout=5'
+dotnet build Clinisys.slnx -c Release --artifacts-path .artifacts/dashboard
+dotnet test tests/Clinisys.Tests/Clinisys.Tests.csproj -c Release --artifacts-path .artifacts/dashboard --no-build --no-restore
+node --test tests/Clinisys.Tests/Frontend/*.test.cjs
+```
+
+Le compte de test conserve son confinement à `ClinisysTestDb` ; le script lui
+accorde `EXECUTE` sur cette procédure uniquement, en plus des droits de test existants.
+
 Medical laboratory management application developed as a five-day technical assessment.
 Step 02 adds the domain database model, EF Core SQL Server mapping and InitialCreate migration.
 Step 03 adds the analysis catalogue, reference ranges and panels API. Step 04 adds
