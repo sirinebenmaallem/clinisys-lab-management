@@ -17,7 +17,11 @@ public sealed record AnalysisResultDetailDto(Guid Id, Guid LaboratoryRequestId, 
     DateTimeOffset? ValidatedAt, string? ValidatedBy, string Version, bool IsCalculated = false, LdlCalculationDto? LdlCalculation = null);
 
 public sealed record AnalysisResultListItemDto(Guid RequestItemId, Guid MedicalAnalysisId,
-    string AnalysisCodeSnapshot, string AnalysisNameSnapshot, string UnitSnapshot, AnalysisResultDetailDto? Result);
+    string AnalysisCodeSnapshot, string AnalysisNameSnapshot, string UnitSnapshot, AnalysisResultDetailDto? Result,
+    AnalysisResultReferenceDto? Reference = null);
+
+// Decimal strings preserve exact bounds in the browser, including decimal(18,6) extremes.
+public sealed record AnalysisResultReferenceDto(string Status, string? LowerBound = null, string? UpperBound = null);
 
 public sealed record AnalysisResultListDto(Guid LaboratoryRequestId, IReadOnlyList<AnalysisResultListItemDto> Items, LdlCalculationDto? LdlCalculation = null);
 

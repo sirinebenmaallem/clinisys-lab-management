@@ -130,7 +130,7 @@ public sealed class LdlCalculationSqlTests
         Assert.Single(await session.Db.AuditEntries.Where(x => x.RequestItemId == session.Items[3].Id).ToListAsync(session.Ct));
     }
 
-    private sealed class Actor : IAnalysisResultActorProvider { public string GetRequiredActor() => Session.ActorId; }
+    private sealed class Actor : IAnalysisResultActorProvider, IRequestWorkflowActorProvider { public string GetRequiredActor() => Session.ActorId; }
 
     private sealed class Session : IAsyncDisposable
     {

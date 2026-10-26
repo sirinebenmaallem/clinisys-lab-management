@@ -56,6 +56,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpIdentity(builder.Configuration, builder.Environment);
 builder.Services.AddScoped<ResultErrorScopeFilter>();
 builder.Services.AddScoped<IAnalysisResultActorProvider, AuthenticatedAnalysisResultActorProvider>();
+builder.Services.AddScoped<IRequestWorkflowActorProvider, AuthenticatedRequestWorkflowActorProvider>();
 builder.Services.AddScoped<AnalysisResultCommands>();
 builder.Services.AddScoped<AnalysisResultQueries>();
 builder.Services.AddScoped<LaboratoryReportQueries>();
@@ -96,6 +97,19 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+// Public login assets; every business API retains its authentication/policy checks.
+var frontendRoot = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+if (Directory.Exists(frontendRoot))
+{
+    var files = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(frontendRoot);
+    app.Lifetime.ApplicationStopped.Register(files.Dispose);
+    app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files });
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = files,
+        OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache"
+    });
+}
 app.UseRouting();
 app.UseAuthentication();
 app.UseRateLimiter();

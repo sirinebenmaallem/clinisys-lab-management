@@ -3,8 +3,9 @@
 Medical laboratory management application developed as a five-day technical assessment.
 Step 02 adds the domain database model, EF Core SQL Server mapping and InitialCreate migration.
 Step 03 adds the analysis catalogue, reference ranges and panels API. Step 04 adds
-patient create/read/search/update with optimistic concurrency. There is no frontend
-yet. Step 05 adds registration and consultation of laboratory
+patient create/read/search/update with optimistic concurrency. A French HTML/CSS,
+JavaScript and jQuery frontend is now served by the API on the same HTTPS origin;
+see [frontend startup and usage](frontend/README.md). Step 05 adds registration and consultation of laboratory
 requests; its additive counter migration and SQL tests have been validated locally.
 Step 06 adds creation, correction and consultation of numeric analysis results,
 frozen reference bounds and abnormality evaluation. Official validation is implemented separately in Step 08. Step 07 adds standard ASP.NET Core Identity, secure cookies, CSRF
@@ -17,7 +18,7 @@ for production.
 - ASP.NET Core Web API with controllers and built-in OpenAPI document generation.
 - xUnit and Microsoft.AspNetCore.Mvc.Testing for an in-memory HTTP integration test.
 - EF Core 10.0.13 with SQL Server 2025 Express (`.\SQLEXPRESS`).
-- Planned for later steps: HTML, CSS, Bootstrap, JavaScript and jQuery/AJAX.
+- HTML, responsive CSS, JavaScript and locally bundled jQuery/AJAX; no frontend build tool.
 
 ## Architecture
 

@@ -17,7 +17,7 @@ namespace Clinisys.Tests.Workflow;
 public sealed class RequestWorkflowStoreUnitTests
 {
     private static readonly byte[] Version = [1, 2, 3, 4, 5, 6, 7, 8];
-    private sealed class Actor(string value) : IAnalysisResultActorProvider
+    private sealed class Actor(string value) : IRequestWorkflowActorProvider
     { public string GetRequiredActor() => value; }
     private sealed class ForbiddenConnection : DbConnectionInterceptor
     {

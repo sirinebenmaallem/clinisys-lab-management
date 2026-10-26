@@ -7,6 +7,30 @@ namespace Clinisys.Application.Features.AnalysisResults;
 // catalogue view; this policy itself provides no SQL concurrency guarantees.
 public static class AnalysisResultReferenceSelector
 {
+    public static AnalysisResultReferenceDto Preview(LaboratoryRequest request, RequestItem item,
+        MedicalAnalysis analysis, IEnumerable<ReferenceRange> ranges, AnalysisResult? result = null)
+    {
+        if (result is not null)
+            return Describe(result.ReferenceLowerBoundSnapshot, result.ReferenceUpperBoundSnapshot);
+        try
+        {
+            var interval = Select(request, item, analysis, ranges);
+            return Describe(interval?.LowerBound, interval?.UpperBound);
+        }
+        catch (AnalysisResultException ex) when (ex.Error == AnalysisResultError.Conflict)
+        {
+            // A read-only preview must not prevent viewing other results. Saving still
+            // runs the original selector under locks and rejects incompatible data.
+            return new("Unavailable");
+        }
+    }
+
+    private static AnalysisResultReferenceDto Describe(decimal? lower, decimal? upper) =>
+        lower is not null && upper is not null
+            ? new("Applicable", lower.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                upper.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            : new("NoReference");
+
     public static ReferenceInterval? Select(LaboratoryRequest request, RequestItem item,
         MedicalAnalysis analysis, IEnumerable<ReferenceRange> ranges)
     {

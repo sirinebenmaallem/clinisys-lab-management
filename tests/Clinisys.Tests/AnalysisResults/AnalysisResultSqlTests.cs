@@ -14,6 +14,34 @@ namespace Clinisys.Tests.AnalysisResults;
 public sealed class AnalysisResultSqlTests
 {
     [SqlServerFact]
+    public async Task ListPreview_UsesPatientReferenceThenPreservesSavedSnapshotAfterCatalogueChanges()
+    {
+        await using var fixture = await AnalysisResultSqlFixture.CreateAsync();
+        await fixture.AddRangeAsync(Sex.Female, 0, 2, 10, 20);
+        await fixture.AddRangeAsync(Sex.Female, 2, 3, -2, 2);
+        await fixture.AddRangeAsync(Sex.Male, 0, null, 100, 200);
+        await using var db = SqlServerTestDatabase.CreateContext();
+        var store = AnalysisResultSqlFixture.Store(db);
+        var preview = (await store.ListForRequestAsync(fixture.Request.Id, default))!;
+        Assert.Equal(new AnalysisResultReferenceDto("Applicable", "-2.000000", "2.000000"),
+            preview.Items.Single(x => x.RequestItemId == fixture.Item.Id).Reference);
+        Assert.Equal("NoReference", preview.Items.Single(x => x.RequestItemId == fixture.EmptyItem.Id).Reference!.Status);
+        Assert.False(await db.AnalysisResults.AnyAsync(x => x.RequestItemId == fixture.Item.Id));
+        Assert.False(await db.AuditEntries.AnyAsync(x => x.LaboratoryRequestId == fixture.Request.Id));
+        var created = await store.CreateAsync(fixture.Request.Id, fixture.Item.Id, 2, default);
+        Assert.Equal(Abnormality.Normal, created.Abnormality);
+        await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE MedicalAnalyses SET Unit=N'other-unit' WHERE Id={fixture.Analysis.Id}");
+        preview = (await store.ListForRequestAsync(fixture.Request.Id, default))!;
+        var reference = preview.Items.Single(x => x.RequestItemId == fixture.Item.Id).Reference!;
+        Assert.Equal("Applicable", reference.Status);
+        Assert.Equal(-2, decimal.Parse(reference.LowerBound!, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(2, decimal.Parse(reference.UpperBound!, System.Globalization.CultureInfo.InvariantCulture));
+        var corrected = await store.UpdateAsync(fixture.Request.Id, fixture.Item.Id, 2.000001m,
+            Convert.FromBase64String(created.Version), default);
+        Assert.Equal(Abnormality.High, corrected.Abnormality);
+    }
+
+    [SqlServerFact]
     public async Task FixtureCleanup_PreservesSyntheticRowsThatPredateTheFixtureBeingCleaned()
     {
         await using var sentinel = await AnalysisResultSqlFixture.CreateAsync();

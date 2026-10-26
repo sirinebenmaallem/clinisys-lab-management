@@ -81,7 +81,7 @@ public sealed class LaboratoryReportSqlTests
         }
     }
 
-    private sealed class Actor : IAnalysisResultActorProvider
+    private sealed class Actor : IRequestWorkflowActorProvider
     {
         internal const string Id = "c0000000-0000-0000-0000-000000000010";
         public string GetRequiredActor() => Id;

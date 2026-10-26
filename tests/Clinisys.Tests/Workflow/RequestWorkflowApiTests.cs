@@ -32,6 +32,7 @@ public sealed class RequestWorkflowApiTests
     [InlineData("Secretary", "deliver", 200)]
     [InlineData("Technician", "deliver", 403)]
     [InlineData("Biologist", "deliver", 200)]
+    [InlineData(null, "deliver", 401)]
     public async Task Roles_EnforcedByRealPolicies(string? role, string action, int expected)
     {
         using var host = new Host(role);
@@ -41,6 +42,8 @@ public sealed class RequestWorkflowApiTests
         Assert.Equal((HttpStatusCode)expected, response.StatusCode);
         Assert.True(response.Headers.CacheControl?.NoStore);
         Assert.Equal(expected == 200 ? 1 : 0, host.State.Calls);
+        if (expected == 200)
+            Assert.Equal(AuthenticatedApiTestSupport.ActorId.ToString(), host.State.AuditActor);
         if (action == "validate" && expected == 200)
             Assert.Equal(AuthenticatedApiTestSupport.ActorId.ToString(), host.State.Request.ValidatedBy);
     }
@@ -153,7 +156,7 @@ public sealed class RequestWorkflowApiTests
             {
                 services.AddTestAuthentication(role is null ? [] : [role]);
                 services.RemoveAll<IRequestWorkflowStore>();
-                services.AddScoped<IRequestWorkflowStore>(sp => new Store(State, sp.GetRequiredService<IAnalysisResultActorProvider>()));
+                services.AddScoped<IRequestWorkflowStore>(sp => new Store(State, sp.GetRequiredService<IRequestWorkflowActorProvider>()));
                 services.RemoveAll<ClinisysDbContext>();
                 services.AddScoped<ClinisysDbContext>(_ => throw new InvalidOperationException("SQL forbidden."));
             });
@@ -169,6 +172,7 @@ public sealed class RequestWorkflowApiTests
         public bool Complete = true;
         public int Calls;
         public Exception? Failure;
+        public string? AuditActor;
         public void PrepareFor(string action)
         {
             if (action != "start") Request.StartProcessing();
@@ -176,11 +180,14 @@ public sealed class RequestWorkflowApiTests
             if (action == "deliver") Request.ValidateResults(true, "synthetic-biologist", DateTimeOffset.UtcNow);
         }
     }
-    private sealed class Store(State state, IAnalysisResultActorProvider actor) : IRequestWorkflowStore
+    private sealed class Store(State state, IRequestWorkflowActorProvider actor) : IRequestWorkflowStore
     {
         public Task<RequestWorkflowDto> TransitionAsync(Guid requestId, RequestWorkflowAction action, byte[] version, CancellationToken ct)
         {
             state.Calls++;
+            // Production resolves the audit actor for every transition, including delivery.
+            var actorId = actor.GetRequiredActor();
+            state.AuditActor = actorId;
             if (state.Failure is not null) throw state.Failure;
             if (requestId != state.Request.Id) throw LaboratoryRequestException.NotFound();
             if (Convert.ToBase64String(version) != state.Token) throw LaboratoryRequestException.WorkflowConflict();
@@ -191,7 +198,7 @@ public sealed class RequestWorkflowApiTests
                 {
                     case RequestWorkflowAction.Start: state.Request.StartProcessing(); break;
                     case RequestWorkflowAction.CompleteEntry: state.Request.MarkResultsEntered(state.Complete); break;
-                    case RequestWorkflowAction.Validate: state.Request.ValidateResults(state.Complete, actor.GetRequiredActor(), now); break;
+                    case RequestWorkflowAction.Validate: state.Request.ValidateResults(state.Complete, actorId, now); break;
                     case RequestWorkflowAction.Deliver: state.Request.Deliver(now); break;
                 }
             }

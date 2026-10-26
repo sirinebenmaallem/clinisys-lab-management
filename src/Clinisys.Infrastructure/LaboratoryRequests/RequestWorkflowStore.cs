@@ -1,5 +1,4 @@
 using System.Data;
-using Clinisys.Application.Features.AnalysisResults;
 using Clinisys.Application.Features.LaboratoryRequests;
 using Clinisys.Domain;
 using Clinisys.Domain.Entities;
@@ -11,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace Clinisys.Infrastructure.LaboratoryRequests;
 
 public sealed class RequestWorkflowStore(ClinisysDbContext db, TimeProvider clock,
-    IAnalysisResultActorProvider actorProvider) : IRequestWorkflowStore
+    IRequestWorkflowActorProvider actorProvider) : IRequestWorkflowStore
 {
     public async Task<RequestWorkflowDto> TransitionAsync(Guid requestId, RequestWorkflowAction action, byte[] version, CancellationToken ct)
     {

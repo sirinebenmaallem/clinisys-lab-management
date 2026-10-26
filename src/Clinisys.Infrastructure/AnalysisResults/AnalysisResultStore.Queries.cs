@@ -32,7 +32,8 @@ public sealed partial class AnalysisResultStore
         RejectReadRetries();
         try
         {
-            if (!await db.LaboratoryRequests.AsNoTracking().AnyAsync(x => x.Id == requestId, ct)) return null;
+            var request = await db.LaboratoryRequests.AsNoTracking().SingleOrDefaultAsync(x => x.Id == requestId, ct);
+            if (request is null) return null;
             var rows = await (from item in db.RequestItems.AsNoTracking()
                               join result in db.AnalysisResults.AsNoTracking() on item.Id equals result.RequestItemId into results
                               from result in results.DefaultIfEmpty()
@@ -44,9 +45,13 @@ public sealed partial class AnalysisResultStore
             if (calculation.Status == "Calculated" &&
                 !rows.Any(x => x.Item.Id == calculation.RequestItemId && x.Result is not null))
                 calculation = calculation with { Status = "NotCalculated", Value = null };
+            var analysisIds = rows.Select(x => x.Item.MedicalAnalysisId).Distinct().ToArray();
+            var analyses = await db.MedicalAnalyses.AsNoTracking().Where(x => analysisIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, ct);
+            var ranges = await db.ReferenceRanges.AsNoTracking().Where(x => analysisIds.Contains(x.MedicalAnalysisId)).ToListAsync(ct);
             return new(requestId, rows.Select(x => new AnalysisResultListItemDto(x.Item.Id, x.Item.MedicalAnalysisId,
                 x.Item.AnalysisCodeSnapshot, x.Item.AnalysisNameSnapshot, x.Item.UnitSnapshot,
-                x.Result is null ? null : Detail(x.Item, x.Result))).ToArray(), calculation);
+                x.Result is null ? null : Detail(x.Item, x.Result),
+                AnalysisResultReferenceSelector.Preview(request, x.Item, analyses[x.Item.MedicalAnalysisId], ranges, x.Result))).ToArray(), calculation);
         }
         catch (Exception ex) when (SqlNumber(ex) == 1205) { throw AnalysisResultException.Conflict(); }
     }

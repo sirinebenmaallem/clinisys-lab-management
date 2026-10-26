@@ -28,6 +28,44 @@ public sealed class RequestWorkflowSqlTests
     private static readonly string Actor = AuthenticatedApiTestSupport.ActorId.ToString();
 
     [SqlServerFact]
+    public async Task Delivery_SecretaryAndBiologistPersistAudit_TechnicianIsForbidden()
+    {
+        foreach (var role in new[] { AuthenticationRoles.Secretary, AuthenticationRoles.Biologist })
+        {
+            await using var fixture = await AnalysisResultSqlFixture.CreateAsync();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+            var ct = timeout.Token;
+            await using var db = Context();
+            var request = await db.LaboratoryRequests.SingleAsync(x => x.Id == fixture.Request.Id, ct);
+            request.StartProcessing();
+            request.MarkResultsEntered(true);
+            request.ValidateResults(true, Actor, DateTimeOffset.UtcNow);
+            await db.SaveChangesAsync(ct);
+            var version = Convert.ToBase64String(request.Version);
+            using (var technician = new Host(AuthenticationRoles.Technician))
+            using (var client = technician.AuthenticatedClient())
+                await Post(client, fixture, "deliver", version, HttpStatusCode.Forbidden, ct);
+            Assert.False(await db.AuditEntries.AnyAsync(x => x.LaboratoryRequestId == request.Id, ct));
+            using var host = new Host(role);
+            using var authorized = host.AuthenticatedClient();
+            var deliveredVersion = await Post(authorized, fixture, "deliver", version, HttpStatusCode.OK, ct);
+            await Post(authorized, fixture, "deliver", version, HttpStatusCode.Conflict, ct);
+            await Post(authorized, fixture, "deliver", deliveredVersion, HttpStatusCode.Conflict, ct);
+            await using var verify = Context();
+            var delivered = await verify.LaboratoryRequests.AsNoTracking().SingleAsync(x => x.Id == request.Id, ct);
+            Assert.Equal(RequestStatus.Delivered, delivered.Status);
+            Assert.Equal(request.ValidatedBy, delivered.ValidatedBy);
+            Assert.Equal(request.ValidatedAt, delivered.ValidatedAt);
+            Assert.True(delivered.DeliveredAt >= delivered.ValidatedAt);
+            var audit = Assert.Single(await verify.AuditEntries.Where(x => x.LaboratoryRequestId == request.Id).ToListAsync(ct));
+            Assert.Equal(AuditAction.Delivered, audit.Action);
+            Assert.Equal(Actor, audit.Actor);
+            Assert.Equal("Validated", audit.OldValue);
+            Assert.Equal("Delivered", audit.NewValue);
+        }
+    }
+
+    [SqlServerFact]
     public async Task FullLifecycle_PersistsValidationLocksResultsAndAuditsOnlyOwnedChanges()
     {
         await using var fixture = await AnalysisResultSqlFixture.CreateAsync();
@@ -223,7 +261,7 @@ public sealed class RequestWorkflowSqlTests
         return db;
     }
     private static RequestWorkflowStore Store(ClinisysDbContext db) => new(db, TimeProvider.System, new SyntheticActor());
-    private sealed class SyntheticActor : IAnalysisResultActorProvider { public string GetRequiredActor() => Actor; }
+    private sealed class SyntheticActor : IRequestWorkflowActorProvider { public string GetRequiredActor() => Actor; }
 
     private static async Task<string> Post(HttpClient client, AnalysisResultSqlFixture fixture, string action,
         string version, HttpStatusCode expected, CancellationToken ct)
