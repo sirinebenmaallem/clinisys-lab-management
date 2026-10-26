@@ -1,4 +1,6 @@
 using Clinisys.Infrastructure.Persistence;
+using Clinisys.Application.Features.LaboratoryReports;
+using Clinisys.Infrastructure.LaboratoryReports;
 using Clinisys.Infrastructure.Authentication;
 using Clinisys.Application.Features.AnalysisResults;
 using Clinisys.Infrastructure.AnalysisResults;
@@ -21,6 +23,8 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(TimeProvider.System);
+        services.AddScoped<ILaboratoryReportStore, LaboratoryReportStore>();
+        services.AddSingleton<ILaboratoryReportPdf>(_ => new LaboratoryReportPdf(configuration["Laboratory:Name"] ?? "Laboratoire"));
         services.AddClinisysIdentity();
         // No default actor is installed. Resolve lazily so existing modules can start;
         // result-store resolution fails closed until an authorized server provider exists.
