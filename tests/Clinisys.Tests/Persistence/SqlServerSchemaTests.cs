@@ -14,7 +14,7 @@ public sealed class SqlServerSchemaTests
         await using var db = SqlServerTestDatabase.CreateContext();
         var assembly = db.GetService<IMigrationsAssembly>();
         Assert.Equal(new[] { "20261023192710_InitialCreate", "20261024175903_AddLaboratoryRequestCounters",
-            "20261025202446_AddAuthenticationIdentity", "20261025225017_FixAuthenticationUserNameCheck" }, assembly.Migrations.Keys.Order(StringComparer.Ordinal));
+            "20261025202446_AddAuthenticationIdentity", "20261025225017_FixAuthenticationUserNameCheck", "20261025235303_AddCalculatedAnalysisResult" }, assembly.Migrations.Keys.Order(StringComparer.Ordinal));
         var operations = assembly.Migrations.OrderBy(x => x.Key)
             .SelectMany(x => assembly.CreateMigration(x.Value, db.Database.ProviderName!).UpOperations).ToArray();
         var tables = operations.OfType<CreateTableOperation>().ToArray();
@@ -26,6 +26,8 @@ public sealed class SqlServerSchemaTests
 
         var expectedColumns = tables.SelectMany(t => t.Columns.Select(c =>
             $"{t.Name}|{c.Name}|{(c.ColumnType == "datetimeoffset" ? "datetimeoffset(7)" : c.ColumnType)}|{(c.IsNullable ? 1 : 0)}"));
+        expectedColumns = expectedColumns.Concat(operations.OfType<AddColumnOperation>().Select(c =>
+            $"{c.Table}|{c.Name}|{c.ColumnType}|{(c.IsNullable ? 1 : 0)}"));
         var actualColumns = await ReadRows(db, """
             SELECT t.name, c.name,
                 CASE WHEN ty.name = 'timestamp' THEN 'rowversion'

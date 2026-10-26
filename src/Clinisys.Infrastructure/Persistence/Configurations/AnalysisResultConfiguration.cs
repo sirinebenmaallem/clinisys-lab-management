@@ -9,6 +9,7 @@ public sealed class AnalysisResultConfiguration : IEntityTypeConfiguration<Analy
     public void Configure(EntityTypeBuilder<AnalysisResult> b)
     {
         b.Entity("AnalysisResults");
+        b.Property(x => x.IsCalculated).HasDefaultValue(false);
         b.Text(x => x.EnteredBy, 100);
         b.Text(x => x.ValidatedBy, 100, false);
         b.Property(x => x.Value).HasPrecision(18, 6);
