@@ -142,6 +142,17 @@ all five workflow SQL tests and the full Release regression: **511 passed,
 
 ## Local setup
 
+Step 10 adds [official A4 PDF reports](docs/laboratory-reports-api.md) for validated
+or delivered requests. The existing Requests.Read policy protects downloads for
+all three roles. Generation is read-only and no-store, using frozen references,
+stored validation metadata and configurable Laboratory:Name. PDFsharp-MigraDoc
+6.2.4 (MIT) is isolated in Infrastructure; the current deployment uses Windows
+Arial fonts. No migration is added.
+Final local Step 10 validation passed the SQL PDF scenario and the complete Release
+suite: **577 passed, 0 failed, 0 skipped**, with ClinisysTestDb only. Visual preview
+remains unverified because of limited disk space; PDF structure/content and
+pagination are covered by automated tests.
+
 Step 09 adds [automatic Friedewald LDL calculation](docs/ldl-calculation.md), using
 explicit server-side catalogue codes, recognized matching units and audited
 recalculation. Manual LDL results are preserved. Its additive IsCalculated migration

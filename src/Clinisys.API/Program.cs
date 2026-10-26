@@ -1,4 +1,5 @@
 using Clinisys.Infrastructure;
+using Clinisys.Application.Features.LaboratoryReports;
 using Clinisys.API.AnalysisResults;
 using Clinisys.Application.Features.AnalysisResults;
 using Clinisys.Application.Features.LaboratoryRequests;
@@ -57,6 +58,7 @@ builder.Services.AddScoped<ResultErrorScopeFilter>();
 builder.Services.AddScoped<IAnalysisResultActorProvider, AuthenticatedAnalysisResultActorProvider>();
 builder.Services.AddScoped<AnalysisResultCommands>();
 builder.Services.AddScoped<AnalysisResultQueries>();
+builder.Services.AddScoped<LaboratoryReportQueries>();
 builder.Services.AddScoped<RequestWorkflowCommands>();
 builder.Services.AddScoped<LaboratoryRequestCommands>();
 builder.Services.AddScoped<LaboratoryRequestQueries>();
