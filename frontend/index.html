@@ -6,6 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <title>Clinisys — Laboratoire</title>
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/png" href="/assets/clinisys-logo.png">
   <script defer src="/js/vendor/jquery-3.7.1.min.js"></script>
   <script defer src="/js/api.js"></script>
   <script defer src="/js/app.js"></script>
@@ -18,14 +19,14 @@
 </head>
 <body>
   <div id="login-screen" class="login-shell">
-    <section class="login-intro"><div class="brand-mark">C<span>+</span></div><p class="eyebrow">CLINISYS · LABORATOIRE</p><h1>Une prise en charge<br>claire, à chaque étape.</h1><p>Patients, demandes et résultats dans un espace de travail sécurisé.</p><div class="intro-rule"></div><p class="small">Accès réservé au personnel autorisé.<br>Les comptes sont créés par l’administrateur local.</p></section>
+    <section class="login-intro"><div class="brand-mark logo-surface"><img class="official-logo" src="/assets/clinisys-logo.png" alt="CliniSys — Powered by Experts, Driven by Digital" width="568" height="236"></div><p class="eyebrow">CLINISYS · LABORATOIRE</p><h1>Une prise en charge<br>claire, à chaque étape.</h1><p>Patients, demandes et résultats dans un espace de travail sécurisé.</p><div class="intro-rule"></div><p class="small">Accès réservé au personnel autorisé.<br>Les comptes sont créés par l’administrateur local.</p></section>
     <section class="login-card"><p class="eyebrow">ESPACE PROFESSIONNEL</p><h2>Connexion</h2><p class="muted">Identifiez-vous pour accéder au laboratoire.</p>
       <form id="login-form"><label for="username">Nom d’utilisateur</label><input id="username" name="username" autocomplete="username" required maxlength="64"><label for="password">Mot de passe</label><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="128"><button class="primary" type="submit">Se connecter <span aria-hidden="true">→</span></button></form>
       <p id="login-message" role="status" class="message"></p><p class="small muted">Connexion HTTPS requise. Votre session est limitée dans le temps.</p>
     </section>
   </div>
   <div id="workspace" hidden>
-    <aside class="sidebar"><a class="brand" href="#requests">C<span>+</span> <strong>Clinisys</strong></a><p class="eyebrow">ESPACE LABORATOIRE</p><nav aria-label="Navigation principale"><button data-page="dashboard" hidden>Tableau de bord</button><button data-page="requests">Demandes d’analyses</button><button data-page="patients">Patients</button><button data-page="catalog">Catalogue</button></nav><div class="sidebar-bottom"><strong id="session-user"></strong><p id="session-roles" class="small"></p><p id="session-expiry" class="small"></p><button id="logout" class="quiet">Se déconnecter</button></div></aside>
+    <aside class="sidebar"><a class="brand logo-surface" href="#requests" aria-label="CliniSys — Demandes"><img class="official-logo" src="/assets/clinisys-logo.png" alt="CliniSys" width="568" height="236"></a><p class="eyebrow">ESPACE LABORATOIRE</p><nav aria-label="Navigation principale"><button data-page="dashboard" hidden>Tableau de bord</button><button data-page="requests">Demandes d’analyses</button><button data-page="patients">Patients</button><button data-page="catalog">Catalogue</button></nav><div class="sidebar-bottom"><strong id="session-user"></strong><p id="session-roles" class="small"></p><p id="session-expiry" class="small"></p><button id="logout" class="quiet">Se déconnecter</button></div></aside>
     <div class="main-shell"><header class="topbar"><span>Gestion du laboratoire</span><span class="secure">● Session authentifiée</span></header><main id="main" tabindex="-1"><div id="notice" role="status" aria-live="polite"></div><div id="page"></div></main><footer>Clinisys · Accès aux données selon votre rôle</footer></div>
   </div>
   <dialog id="editor" aria-labelledby="editor-title"><div class="dialog-head"><h2 id="editor-title"></h2><button id="close-editor" type="button" aria-label="Fermer">×</button></div><div id="editor-body"></div><p id="editor-error" class="message error" role="alert"></p></dialog>

@@ -14,6 +14,7 @@ public sealed class FrontendHostingTests
     [Theory]
     [InlineData("/", "text/html")]
     [InlineData("/css/style.css", "text/css")]
+    [InlineData("/assets/clinisys-logo.png", "image/png")]
     [InlineData("/js/vendor/jquery-3.7.1.min.js", "text/javascript")]
     [InlineData("/js/api.js", "text/javascript")]
     [InlineData("/js/app.js", "text/javascript")]

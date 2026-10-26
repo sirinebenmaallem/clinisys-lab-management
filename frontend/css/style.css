@@ -10,3 +10,62 @@ figure.panel { margin: 1rem 0; overflow-x: auto; }
 
 .dashboard-bars { display: flex; align-items: flex-end; gap: 2px; height: 180px; padding: 10px; background: white; border-bottom: 1px solid #647a80; }
 .dashboard-bar { flex: 1; min-width: 1px; background: #087f79; }
+
+/* Official identity: the supplied transparent PNG stays unmodified. */
+:root {
+  --ink: #193544; --muted: #526976; --teal: #126b84; --deep: #102c3a;
+  --line: #dce5eb; --bg: #f4f7fa; --brand-blue: #2297b4; --brand-orange: #cf592d;
+}
+.logo-surface { background: #fff; border-radius: 10px; padding: 12px; }
+.official-logo { display: block; width: 100%; height: auto; object-fit: contain; }
+.brand-mark { width: min(100%, 400px); margin-bottom: 1.75rem; }
+.brand { margin-bottom: 1.75rem; }
+.login-intro { border-top: 5px solid var(--brand-orange); }
+.login-intro > p { color: #d1e1ea; }
+.intro-rule { background: #416173; }
+.login-card { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 2rem; box-shadow: 0 12px 36px #1935440a; }
+.login-card .eyebrow { color: var(--teal); }
+.sidebar { overflow-y: auto; }
+.sidebar nav button { border-left: 3px solid transparent; border-radius: 6px; }
+.sidebar nav button:hover { background: #1b4052; color: white; }
+.sidebar nav button.active { background: #1b4052; border-left-color: var(--brand-orange); }
+button { min-height: 40px; }
+button.primary:hover { background: #0c566d; border-color: #0c566d; color: white; }
+input:focus, select:focus, button:focus-visible, a:focus-visible { outline-color: var(--brand-blue); }
+h1 { letter-spacing: -.035rem; }
+.page-head { align-items: flex-start; flex-wrap: wrap; }
+.page-head > div, .main-shell, .login-intro, .login-card { min-width: 0; }
+.page-head p { margin-bottom: 0; }
+.actions { row-gap: .6rem; }
+.panel, .table-wrap { box-shadow: 0 2px 8px #19354404; }
+.table-wrap { max-width: 100%; }
+th { color: #435d6d; background: #eef4f8; white-space: nowrap; }
+th, td { line-height: 1.55; vertical-align: middle; }
+tbody tr:nth-child(even) { background: #f8fafc; }
+tbody tr:hover { background: #eef6fa; }
+td .actions button { min-height: 36px; }
+.result-evaluation { display: inline-block; padding: .3rem .55rem; }
+.note { background: #edf5fa; }
+.selected-patient { background: #e9f4f8; }
+.dashboard-bar { background: var(--brand-blue); }
+.dashboard-bars { overflow-x: auto; }
+.pager { flex-wrap: wrap; }
+.grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+@media (max-width: 850px) {
+  .sidebar { overflow: visible; }
+  .sidebar .brand { width: 230px; max-width: 100%; }
+  .login-intro { padding: 2rem; }
+  .login-card { width: min(440px, calc(100% - 2rem)); margin: 1.5rem auto; }
+}
+@media (max-width: 520px) {
+  .login-intro { padding: 1.5rem; }
+  .brand-mark { max-width: 320px; margin-bottom: 1rem; }
+  .login-intro h1 { font-size: 1.8rem; }
+  .login-card { padding: 1.25rem; }
+  .sidebar .brand { width: 210px; }
+  .page-head .actions { width: 100%; }
+  .toolbar > label { width: 100%; }
+  .toolbar .search { min-width: 0; }
+  .sidebar-bottom { align-items: flex-start; }
+  .table-wrap table { min-width: 580px; }
+}
