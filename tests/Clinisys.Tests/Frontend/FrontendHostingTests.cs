@@ -21,6 +21,7 @@ public sealed class FrontendHostingTests
     [InlineData("/js/patients.js", "text/javascript")]
     [InlineData("/js/requests.js", "text/javascript")]
     [InlineData("/js/result-entry.js", "text/javascript")]
+    [InlineData("/js/history.js", "text/javascript")]
     public async Task LoginAssets_ArePublicAndServedFromApiOutput(string path, string contentType)
     {
         using var host = new Host();

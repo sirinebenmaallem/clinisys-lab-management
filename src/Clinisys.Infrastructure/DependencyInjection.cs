@@ -23,6 +23,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(TimeProvider.System);
+        services.AddScoped<IPatientAnalysisHistoryStore, PatientAnalysisHistoryStore>();
         services.AddScoped<ILaboratoryReportStore, LaboratoryReportStore>();
         services.AddSingleton<ILaboratoryReportPdf>(_ => new LaboratoryReportPdf(configuration["Laboratory:Name"] ?? "Laboratoire"));
         services.AddClinisysIdentity();

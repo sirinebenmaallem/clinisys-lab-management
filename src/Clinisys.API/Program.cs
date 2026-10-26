@@ -59,6 +59,7 @@ builder.Services.AddScoped<IAnalysisResultActorProvider, AuthenticatedAnalysisRe
 builder.Services.AddScoped<IRequestWorkflowActorProvider, AuthenticatedRequestWorkflowActorProvider>();
 builder.Services.AddScoped<AnalysisResultCommands>();
 builder.Services.AddScoped<AnalysisResultQueries>();
+builder.Services.AddScoped<PatientAnalysisHistoryQueries>();
 builder.Services.AddScoped<LaboratoryReportQueries>();
 builder.Services.AddScoped<RequestWorkflowCommands>();
 builder.Services.AddScoped<LaboratoryRequestCommands>();

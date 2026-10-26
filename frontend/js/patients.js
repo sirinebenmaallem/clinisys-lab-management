@@ -56,5 +56,5 @@ App.pages.patients = async function (state = {}) {
   jQuery("#page").append(Ui.searchForm([field], v => App.open("patients", { search: v.search.trim(), page: 1 })));
   if (!App.has("Secretary")) jQuery("#page").append(Ui.el("p", "La consultation des identifiants et la modification sont réservées au secrétariat.", { class: "note" }));
   jQuery("#page").append(Ui.table(["Patient", "Naissance", "Sexe", "Actions"], data.items.map(p => [p.firstName + " " + p.lastName, Ui.date(p.dateOfBirth), Ui.sex[p.sex], Ui.el("div", "", { class: "actions" }).append(
-    App.has("Secretary") ? [Ui.button("Consulter", () => Patients.detail(p.id)), Ui.button("Modifier", () => Patients.edit(p.id)), Ui.button("Créer une demande", () => App.open("newRequest", p))] : [])])), Ui.pager(page, data.totalCount, 20, next => App.open("patients", { page: next, search })));
+    App.has("Technician", "Biologist") ? [Ui.button("Historique", () => App.open("history", { patient: p }))] : [], App.has("Secretary") ? [Ui.button("Consulter", () => Patients.detail(p.id)), Ui.button("Modifier", () => Patients.edit(p.id)), Ui.button("Créer une demande", () => App.open("newRequest", p))] : [])])), Ui.pager(page, data.totalCount, 20, next => App.open("patients", { page: next, search })));
 };

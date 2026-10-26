@@ -27,6 +27,22 @@ Les demandes utilisent les analyses et bilans réellement renvoyés par le catal
 
 ## Contrats utilisés
 
+### Historique d’une analyse
+
+Depuis **Patients → Historique** (Technician ou Biologist), rechercher une analyse
+et choisir **Afficher l’évolution**. Seuls les résultats validés de demandes validées
+ou délivrées sont inclus. Le graphique utilise la date UTC de la demande, sépare
+les unités exactes et ne réalise aucune conversion. Le tableau présente aussi la
+date du résultat, la valeur, l’unité et l’évaluation conservée par le serveur.
+Une analyse sans résultat affiche un état vide ; Secretary n’a pas accès à cette lecture.
+
+Endpoint : `GET /api/patients/{patientId}/analyses/{analysisId}/history`, sous la
+politique existante `Results.Read` (200, y compris une liste vide ; 400 pour un GUID
+vide ; 401/403 sans autorisation ; 404 pour un patient ou une analyse absent).
+La lecture ne modifie aucune donnée et utilise les tables existantes.
+
+Tests JavaScript : `node --test tests/Clinisys.Tests/Frontend/*.test.cjs` depuis la racine.
+
 - `/api/auth/antiforgery`, `/login`, `/session`, `/logout` : session par cookie sécurisé, token CSRF en mémoire, renouvelé après connexion.
 - `/api/medical-analyses`, `/api/analysis-panels` et leurs routes existantes de désactivation, références et associations.
 - `/api/patients` : recherche paginée, création, détail et PUT `{ patient, version }`.

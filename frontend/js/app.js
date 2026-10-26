@@ -70,7 +70,7 @@ window.App = {
     Api.cancelReads();
     jQuery("#notice").empty();
     jQuery("#page").empty().append(Ui.el("div", "Chargement des données…", { class: "loading", role: "status" }));
-    jQuery("nav button").removeClass("active").filter('[data-page="' + (page.startsWith("request") ? "requests" : page) + '"]').addClass("active");
+    jQuery("nav button").removeClass("active").filter('[data-page="' + (page.startsWith("request") ? "requests" : page === "history" ? "patients" : page) + '"]').addClass("active");
     history.replaceState(null, "", "#" + page);
     if (!this.session) return;
     const render = this.pages[page];
